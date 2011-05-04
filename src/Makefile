@@ -1,8 +1,8 @@
 #*****************************************************************************
-#              Makefile Build System for Fawkes: ROS Fawkes
+#                      Makefile Build System for Fawkes
 #                            -------------------
-#   Created on Wed May 04 18:48:20 2011
-#   Copyright (C) 2011 by Tim Niemueller, AllemaniACs RoboCup Team
+#   Created on Wed May 04 19:58:26 2011
+#   Copyright (C) 2006-2011 by Tim Niemueller, AllemaniACs RoboCup Team
 #
 #*****************************************************************************
 #
@@ -13,19 +13,14 @@
 #
 #*****************************************************************************
 
-BASEDIR = .
+BASEDIR = ..
 
-SUBDIRS = fawkes src
+#SUBDIRS = libs interfaces plugins
 
 include $(BASEDIR)/etc/buildsys/config.mk
 include $(BUILDSYSDIR)/rules.mk
-include $(BUILDSYSDIR)/root/root.mk
 
-src: fawkes
-
-ros:
-	$(SILENT)$(MAKE) -f Makefile.cmake
-
-ros%:
-	$(SILENT)$(MAKE) -f Makefile.cmake $*
+# Explicit dependencies, this is needed to have make bail out if there is any
+# error. This is also necessary for working parallel build (i.e. for dual core)
+#interfaces firevision plugins tools: libs
 
