@@ -1,0 +1,12 @@
+<package>
+  <description brief="rosfawkes">
+     This package integrates Fawkes into ROS.
+  </description>
+  <author>Tim Niemueller</author>
+  <license>GPLv2+</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://www.fawkesrobotics.org/documentation/rosfawkes</url>
+  <depend package="roscpp"/>
+</package>
+
+
