@@ -7,6 +7,10 @@
   <review status="unreviewed" notes=""/>
   <url>http://www.fawkesrobotics.org/documentation/rosfawkes</url>
   <depend package="roscpp"/>
+  <export>
+    <cpp cflags="-I${prefix}/fawkes/src -I${prefix}/src -I${prefix}/fawkes/src/libs -I${prefix}/src/libs"
+         lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib" />
+  </export>
 </package>
 
 
