@@ -24,6 +24,9 @@
 #include <baseapp/run.h>
 #include <baseapp/main_thread.h>
 #include <core/exception.h>
+#include <aspect/manager.h>
+#include <plugins/ros/aspect/ros.h>
+#include <plugins/ros/aspect/ros_inifin.h>
 
 #include <ros/ros.h>
 
@@ -50,8 +53,12 @@ main(int argc, char **argv)
     return 1;
   }
 
-  fawkes::runtime::main_thread->start();
+  fawkes::LockPtr<ros::NodeHandle> node_handle(new ros::NodeHandle());
+  fawkes::ROSAspectIniFin ros_aspect_inifin;
+  ros_aspect_inifin.set_rosnode(node_handle);
+  fawkes::runtime::aspect_manager->register_inifin(&ros_aspect_inifin);
 
+  fawkes::runtime::main_thread->start();
   ros::spin();
 
   fawkes::runtime::main_thread->cancel();

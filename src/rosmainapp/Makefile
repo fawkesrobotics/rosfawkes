@@ -20,7 +20,7 @@ include $(BASEDIR)/etc/buildsys/config.mk
 CFLAGS  += $(shell rospack export --lang=cpp --attrib=cflags roscpp)
 LDFLAGS += $(shell rospack export --lang=cpp --attrib=lflags roscpp)
 
-LIBS_rosfawkes = stdc++ fawkescore fawkesbaseapp
+LIBS_rosfawkes = stdc++ fawkescore fawkesbaseapp fawkesaspects fawkesrosaspect
 OBJS_rosfawkes = $(patsubst %.cpp,%.o,$(patsubst qa/%,,$(subst $(SRCDIR)/,,$(realpath $(wildcard $(SRCDIR)/*.cpp)))))
 
 OBJS_all     = $(OBJS_rosfawkes)
