@@ -15,7 +15,7 @@
 
 BASEDIR = ..
 
-#SUBDIRS = libs interfaces plugins
+SUBDIRS = rosmainapp
 
 include $(BASEDIR)/etc/buildsys/config.mk
 include $(BUILDSYSDIR)/rules.mk
