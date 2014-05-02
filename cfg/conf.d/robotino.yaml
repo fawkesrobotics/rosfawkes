@@ -1,0 +1,51 @@
+%YAML 1.2
+%TAG ! tag:fawkesrobotics.org,cfg/
+---
+doc-url: !url http://trac.fawkesrobotics.org/wiki/Plugins/robotino
+---
+hardware/robotino:
+  # Host to connect to
+  hostname: 127.0.0.1
+
+  # If true quit Fawkes on disconnect from Robotino Com server, otherwise
+  # retry connection. If run from LCD menu should be set to true.
+  quit_on_disconnect: true
+
+  # Time threshold after all motor velocities are set to zero if no new messages arrived inbetween
+  deadman_time_threshold: 0.5
+
+  # Odom TF offset. This time is added to the current time when the odometry <- base_link TF is published
+  odom_time_offset: 0.25
+
+  # Odometry coordinate frame
+  odom_frame: !frame /odom
+
+  # Base coordinate frame
+  base_frame: !frame /base_link
+
+  gripper:
+    # Enable gripper {ENABLED=true / DISABLED=false}
+    enable_gripper: true
+
+    # ID of the Gripper Interface
+    gripper_id: Robotino
+
+  joystick:
+    # Axis index for forward/backward movement
+    axis_forward: 1
+
+    # Axis index for sideward movement
+    axis_sideward: 0
+
+    # Axis index for rotational movement
+    axis_rotation: 3
+
+    # Maximum velocity forward; m/s
+    max_vx: 1.5
+
+    # Maximum velocity sideward; m/s
+    max_vy: 1.5
+
+    # Maximum rotation; rad/s
+    max_omega: 1.57
+
