@@ -1,10 +1,9 @@
 
 /***************************************************************************
- *  main.cpp - Fawkes main application
+ *  main.cpp - ROS-Fawkes main application
  *
- *  Created: Thu Nov  2 16:44:48 2006
- *  Copyright  2006-2011  Tim Niemueller [www.niemueller.de]
- *
+ *  Created: Mon May 9 17:59:20 2011
+ *  Copyright  2006-2014  Tim Niemueller [www.niemueller.de]
  ****************************************************************************/
 
 /*  This program is free software; you can redistribute it and/or modify
@@ -24,6 +23,7 @@
 #include <baseapp/run.h>
 #include <baseapp/main_thread.h>
 #include <core/exception.h>
+#include <core/version.h>
 #include <aspect/manager.h>
 #include <plugins/ros/aspect/ros.h>
 #include <plugins/ros/aspect/ros_inifin.h>
@@ -42,9 +42,18 @@ main(int argc, char **argv)
 {
   ros::init(argc, argv, "rosfawkes");
 
+  fawkes::runtime::InitOptions init_options(argc, argv);
+  std::string plugins;
+  if (ros::param::get("~plugins", plugins) && plugins != "") {
+    if (init_options.has_load_plugin_list()) {
+      plugins += std::string(",") + init_options.load_plugin_list();
+    }
+    init_options.load_plugins(plugins.c_str());
+  }
+
   try {
     int rv = 0;
-    if ((rv = fawkes::runtime::init(argc, argv)) != 0) {
+    if (! fawkes::runtime::init(init_options, rv)) {
       return rv;
     }
   } catch (fawkes::Exception &e) {
@@ -58,7 +67,14 @@ main(int argc, char **argv)
   ros_aspect_inifin.set_rosnode(node_handle);
   fawkes::runtime::aspect_manager->register_inifin(&ros_aspect_inifin);
 
-  fawkes::runtime::main_thread->start();
+  if (init_options.has_load_plugin_list()) {
+    fawkes::runtime::logger->log_info("ROS-Fawkes", "Loading plugins: %s",
+				      init_options.load_plugin_list());
+  }
+  fawkes::runtime::main_thread->full_start();
+  fawkes::runtime::logger->log_info("ROS-Fawkes", "ROS-Fawkes %s startup complete",
+				    FAWKES_VERSION_STRING);
+
   ros::spin();
 
   fawkes::runtime::main_thread->cancel();
