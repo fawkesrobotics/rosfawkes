@@ -1,7 +1,7 @@
 <launch>
 
   <!-- Which plugins to load -->
-  <arg name="plugins" value="ros-tf" />
+  <arg name="plugins" default="ros-tf" />
   <arg name="args" default="" />
 
 

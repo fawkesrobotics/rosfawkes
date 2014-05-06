@@ -1,0 +1,9 @@
+<launch>
+
+  <!-- Which plugins to load -->
+  <arg name="plugins" value="ros-tf,mongodb,pcl-db-merge,pcl-db-retrieve,pcl-db-store,pcl-db-roscomm,ros-pcl" />
+
+  <include file="$(find rosfawkes)/launch/rosfawkes.launch">
+    <arg name="plugins" value="$(arg plugins)" />
+  </include>
+</launch>
