@@ -5,7 +5,7 @@ doc-url: !url http://trac.fawkesrobotics.org/wiki/Plugins/skiller
 ---
 skiller:
   # Skill space
-  skillspace: test
+  skillspace: pr2
 
   # Watch lua files for modification and automatically reload
   # Lua if files have been changed; true to enable
@@ -21,36 +21,21 @@ skiller:
       enable: true
 
   interfaces:
-    test:
+    pr2:
       reading:
         navigator: NavigatorInterface::Navigator
-        pose: ObjectPositionInterface::WM Pose
-        speechsynth: SpeechSynthInterface::Flite
-        katanaarm: KatanaInterface::Katana
-        ptu_RX28: PanTiltInterface::PanTilt RX28
-        ptu_EviD100P: PanTiltInterface::PanTilt EviD100P
-    nao:
-      navigator: NavigatorInterface::Navigator
-      pose: ObjectPositionInterface::WM Pose
-      wm_ball: ObjectPositionInterface::WM Ball
-      gamestate: GameStateInterface::WM GameState
-      speechsynth: SpeechSynthInterface::Nao SpeechSynth
-      naomotion: HumanoidMotionInterface::NaoQi Motion
-      naosensors: NaoSensorInterface::Nao Sensors
-      naostiffness: NaoJointStiffnessInterface::Nao Joint Stiffness
-      naojoints: NaoJointPositionInterface::Nao Joint Positions
-      chestbutton: SwitchInterface::Nao Button Chest
-      lfootbumper: SwitchInterface::Nao Button Foot Left
-      rfootbumper: SwitchInterface::Nao Button Foot Right
-      chestled_blue: LedInterface::Nao LED ChestBoard/Blue
-      chestled_red: LedInterface::Nao LED ChestBoard/Red
-      chestled_green: LedInterface::Nao LED ChestBoard/Green
-      lfootled_blue: LedInterface::Nao LED LFoot/Blue
-      lfootled_red: LedInterface::Nao LED LFoot/Red
-      lfootled_green: LedInterface::Nao LED LFoot/Green
-      rfootled_blue: LedInterface::Nao LED RFoot/Blue
-      rfootled_red: LedInterface::Nao LED RFoot/Red
-      rfootled_green: LedInterface::Nao LED RFoot/Green
-      ear_leds: LedInterface::Nao LED Ears/*/*
-      face_leds: LedInterface::Nao LED Face/*/*/*
-      penalty: SoccerPenaltyInterface::SPL Penalty
+        ppnavi: NavigatorInterface::Pathplan
+        pose: ObjectPositionInterface::Pose
+
+      writing:
+        obj_pose_1: Position3DInterface::/percobj/1
+        obj_pose_2: Position3DInterface::/percobj/2
+        obj_pose_3: Position3DInterface::/percobj/3
+        obj_pose_4: Position3DInterface::/percobj/4
+        obj_pose_5: Position3DInterface::/percobj/5
+        obj_type_1: MultiTypedObjectInterface::/percobj/1
+        obj_type_2: MultiTypedObjectInterface::/percobj/2
+        obj_type_3: MultiTypedObjectInterface::/percobj/3
+        obj_type_4: MultiTypedObjectInterface::/percobj/4
+        obj_type_5: MultiTypedObjectInterface::/percobj/5
+
