@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE interface SYSTEM "interface.dtd">
+<interface name="MultiTypedObjectInterface" author="Tim Niemueller" year="2014">
+  <data>
+    <comment>
+      Describes an object with multiple possible types.
+    </comment>
+    <field type="uint32" name="obj_id">Unique and stable ID of the object.</field>
+    <field type="string" length="32" name="type_1">Possible type of the object.</field>
+    <field type="string" length="32" name="type_2">Possible type of the object.</field>
+    <field type="string" length="32" name="type_3">Possible type of the object.</field>
+    <field type="string" length="32" name="type_4">Possible type of the object.</field>
+  </data>
+</interface>
