@@ -11,6 +11,15 @@ skiller:
   # Lua if files have been changed; true to enable
   watch_files: true
 
+  # Feature-specific configuration
+  features:
+
+    # Enable a skiller-internal roslua-powered ROS node to access the
+    # ROS universe from the skiller. This allows, for example, to read
+    # data from topics or invoke ROS actions.
+    ros:
+      enable: true
+
   interfaces:
     test:
       reading:
