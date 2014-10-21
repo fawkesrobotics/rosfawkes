@@ -9,6 +9,7 @@
   <depend package="roscpp" />
   <depend package="roslua" />
   <depend package="fawkes_msgs" />
+  <depend package="actionlib_lua" />
   <export>
     <cpp cflags="-I${prefix}/fawkes/src -I${prefix}/src -I${prefix}/fawkes/src/libs -I${prefix}/src/libs"
          lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib" />
