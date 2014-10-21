@@ -1,0 +1,55 @@
+%YAML 1.2
+%TAG ! tag:fawkesrobotics.org,cfg/
+---
+doc-url: !url http://trac.fawkesrobotics.org/wiki/Plugins/readylogagent
+---
+readylogagent:
+  # name of the ECLiPSe module in which the agent is stored
+  # The file path set below is search for the file
+  agent: hybris_2014
+
+  #Basedirectory of ECLiPSe
+  eclipse_dir: /usr/libexec/eclipse-6.1-164-x86_64/
+
+  # List of directories to search for included files
+  file_path: ["@FAWKESDIR@/src/plugins/readylogagent/interpreter/",
+              "@FAWKESDIR@/src/plugins/readylogagent/utils/",
+              "@BASEDIR@/src/plugins/readylogagent/interpreter/",
+              "@FAWKESDIR@/src/readylog/externals/",
+              "@BASEDIR@/src/agents/@AGENT@/",
+              "/home/tim/robotics/projects/esbl/bats"]
+
+  elevator:
+    use_graph: False
+  skillexec:
+    use_graph: False
+  drive_around:
+    use_graph: True
+    rel_graph_path: "/locations/robolab/navgraph-robolab.yaml"
+  drive_indi:
+    use_graph: True
+    rel_graph_path: "/locations/robolab/navgraph-robolab.yaml"
+  test:
+    use_graph: False
+  stack_drive:
+    use_graph: True
+    rel_graph_path: "/locations/robolab/navgraph-robolab.yaml"
+  indi_elevator:
+    use_graph: False
+  demo2014:
+    use_graph: True
+    rel_graph_path: "/locations/robolab/navgraph-robolab.yaml"
+  demo2014sidedrop:
+    use_graph: True
+    rel_graph_path: "/locations/robolab/navgraph-robolab.yaml"
+  demo2014nograb:
+    use_graph: True
+    rel_graph_path: "/locations/robolab/navgraph-robolab.yaml"
+  demo2014side:
+    use_graph: True
+    rel_graph_path: "/locations/robolab/navgraph-robolab.yaml"
+
+  hybris_2014:
+    use_graph: True
+    rel_graph_path: "/locations/robolab/navgraph-robolab.yaml"
+
