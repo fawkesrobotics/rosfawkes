@@ -39,22 +39,22 @@
 ?- locate_module("tktools", F), use_module(F).
 ?- locate_module("check_indigolog", F), use_module(F).
 
-:- use_module(library(util)).
-:- load("/home/tim/robotics/projects/esbl/bats/libBAT-kitchen.so").
-%?- locate_file("libBAT-kitchen.so", F), load(F).
-:- ["/home/tim/robotics/projects/esbl/bats/proper-plus.pl"].
+%% :- use_module(library(util)).
+%% %:- load("/home/tim/robotics/projects/esbl/bats/libBAT-kitchen.so").
+%% ?- locate_file("libBAT-kitchen.so", F), load(F).
+%% :- ["/home/tim/robotics/projects/esbl/bats/proper-plus.pl"].
 
-% Load the ESBL interface:
-:- load('/home/tim/robotics/projects/esbl/eclipse-clp/libEclipseESBL.so').
-:- external(kcontext/1, p_kcontext).
-:- external(bcontext/2, p_bcontext).
-:- external(context_store/2, p_context_store).
-:- external(context_retrieve/2, p_context_retrieve).
-:- external(context_exec/4, p_context_exec).
-:- external(context_entails/3, p_context_entails).
+%% % Load the ESBL interface:
+%% :- load('/home/tim/robotics/projects/esbl/eclipse-clp/libEclipseESBL.so').
+%% :- external(kcontext/1, p_kcontext).
+%% :- external(bcontext/2, p_bcontext).
+%% :- external(context_store/2, p_context_store).
+%% :- external(context_retrieve/2, p_context_retrieve).
+%% :- external(context_exec/4, p_context_exec).
+%% :- external(context_entails/3, p_context_entails).
 
-% Create a context and store it in an extra-logical variable:
-:- kcontext(Ctx), store_context(kctx, Ctx).
+%% % Create a context and store it in an extra-logical variable:
+%% :- kcontext(Ctx), store_context(kctx, Ctx).
 
 % Now test the properties (some are taken from the KR-2014 paper, some are
 % additional tests; they also match the kr2014.c example):
@@ -118,8 +118,8 @@ handle_terminate(terminate) :-
 
 %% initialisation and finalisation - only open all interfaces when on host caesar
 %% otherwise use less interfaces to enable simulation on desktops
-:- if(get_flag(hostname, "caesar")).
-% On caesar:
+:- if(get_flag(hostname, "c1")).
+% On c1:
 
 %% initialisation: open all interfaces you want to use here,
 %% gain skiller control
@@ -193,11 +193,11 @@ fin :-
 :- endif.
 
 % load navgraph
-load_graph(Path) :- log_info("loaging graph"), map_graph_load(Path),
+load_graph(Path) :- log_info("loading graph %s", [Path]), map_graph_load(Path),
     log_debug("demo2014.ecl: navgraph map loaded."),
     % define nodes as possible locations
     map_graph_get_nodes(X),
-    define_locations(X),
+    define_locations(X).
     %map_graph_search_nodes("TableNode", Res),
     %define_tables(Res).
 
@@ -223,6 +223,8 @@ check_for_msg.
 want_object("chocolate").
 table("counter").
 table("dinnertable").
+
+location(L) :- table_pos("counter", L).
 
 table_pos("counter", "table1_loc1_room1").
 table_pos("counter", "table1_loc2_room1").
@@ -293,8 +295,8 @@ execute(read_skiller_status, Sr) :-
 
 execute(drive_to(Node), Sr) :- 
     log_info("Executing: drive_to(%w)", [Node]),
-    concat_string(["place=", "\"", Node, "\""], Arg),
-    exec_skill("ppgoto", Arg),
+    concat_string(["goal=\"(at-base ", Node, ")\", use_env_server=true"], Arg),
+    exec_skill("planexec", Arg),
     sleep(0.1),
     wait_for_skiller,
     ( success, !, Sr=Node
@@ -391,7 +393,7 @@ execute(backoff_from_table, false) :-
     wait_for_skiller,
     inverse_decide(Sr).
 
-:- if(get_flag(hostname, "caesar")).
+:- if(get_flag(hostname, "c1")).
 execute(sense_tilt, Sr) :-
     log_info("Sensing tilt value"),
     bb_read_interfaces,
@@ -413,7 +415,7 @@ execute(pantilt(Pan, Tilt), false) :-
 execute(change_fluent(Fluent, Value), false) :- log_info("Executing: change_fluent(%w, %w)", [Fluent, Value]).
 
 
-:- if(get_flag(hostname, "caesar")).
+:- if(get_flag(hostname, "c1")).
 execute(send_switch_msg(Iface, Msg), false) :-
     log_info("Executing: send_switch_msg(%w, %w)", [Iface, Msg]),
     bb_send_message(Iface, Msg, []),
@@ -423,7 +425,7 @@ execute(send_switch_msg(Iface, Msg), false) :-
     log_info("Executing: send_switch_msg(%w, %w) - DEBUG! DOES NOTHING", [Iface, Msg]).
 :- endif.
 
-:- if(get_flag(hostname, "caesar")).
+:- if(get_flag(hostname, "c1")).
 execute(sense_rotation, Sr) :-
   log_info("Executing: sense_rotation"),
   bb_read_interfaces,
@@ -717,7 +719,10 @@ proc(control, prioritized_interrupts(
      interrupt(running, sleep),
      
      % put things to exec once initially here
-     interrupt(exec_once=true, [change_fluent(exec_once,false)]),
+     interrupt(exec_once=true,
+	[print("Executing planexec"),
+	 drive_to("table1_loc1_room1"),
+	 change_fluent(exec_once,false)]),
 
      interrupt(and(neg(verbose_mode(mute)), num_runs=2), set_verbose(mute)),
 
@@ -734,32 +739,32 @@ proc(control, prioritized_interrupts(
       *     -> No: fail, possibly move to next table
       */
 
-     interrupt(n, next_action_goto_counter(n),
-	       [plan_exec("at(\"table1_loc1_room1\")")]),
+%     interrupt(n, next_action_goto_counter(n),
+%	       [plan_exec("at(\"table1_loc1_room1\")")]),
 
      % run basic perception if we do not know any object worth of
      % closer inspection, yet.
-     interrupt(n, and(at_table("counter"), (and(esl, positions_left(n)))),
-	       [generate_goal_goto(N, Goal), plan_exec(Goal)]),
+%     interrupt(n, and(at_table("counter"), (and(esl, positions_left(n)))),
+%	       [generate_goal_goto(N, Goal), plan_exec(Goal)]),
 
      % fail, cannot find object
-     interrupt(n, and(at_table("counter"), neg(positions_left(n))),
-	       [restart]),
+%     interrupt(n, and(at_table("counter"), neg(positions_left(n))),
+%	       [restart]),
 
      % at the counter, having an object which is of type box, but it
      % is yet unknown which specific one it is -> inspect
-     interrupt(and(at_table("counter"),and(holding_box=false, esl)),
-	       [generate_goal_inspect(ObjID, Goal), plan_exec(Goal)]),
+%     interrupt(and(at_table("counter"),and(holding_box=false, esl)),
+%	       [generate_goal_inspect(ObjID, Goal), plan_exec(Goal)]),
 
      % at the counter, picked up an object, and determined it to be
      % the wrong one -> put down and go on
-     interrupt(and(at_table("counter"),and(holding_box=true, esl)),
-	       [generate_goal_put_down(ObjID, Goal), plan_exec(Goal)]),
+%     interrupt(and(at_table("counter"),and(holding_box=true, esl)),
+%	       [generate_goal_put_down(ObjID, Goal), plan_exec(Goal)]),
 
      % at the counter, picked up an object, and determined it to be
      % the correct one -> bring to table
-     interrupt(and(at_table("counter"),and(holding_box=true, esl)),
-	       [generate_goal_deliver(ObjID, Goal), plan_exec(Goal)]),
+%     interrupt(and(at_table("counter"),and(holding_box=true, esl)),
+%	       [generate_goal_deliver(ObjID, Goal), plan_exec(Goal)]),
 
      interrupt(true, sleep)
     ])).
