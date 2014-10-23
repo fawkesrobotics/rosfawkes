@@ -9,7 +9,7 @@ readylogagent:
   agent: hybris_2014
 
   #Basedirectory of ECLiPSe
-  eclipse_dir: /usr/libexec/eclipse-6.1-164-x86_64/
+  eclipse_dir: /usr/lib/eclipse-clp
 
   # List of directories to search for included files
   file_path: ["@FAWKESDIR@/src/plugins/readylogagent/interpreter/",
@@ -17,7 +17,7 @@ readylogagent:
               "@BASEDIR@/src/plugins/readylogagent/interpreter/",
               "@FAWKESDIR@/src/readylog/externals/",
               "@BASEDIR@/src/agents/@AGENT@/",
-              "/home/tim/robotics/projects/esbl/bats"]
+              "/home/hybrisc1/esbl/bats"]
 
   elevator:
     use_graph: False
