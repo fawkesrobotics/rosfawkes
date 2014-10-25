@@ -31,11 +31,17 @@ depends_interfaces = {
    {v = "obj_type_3", type = "MultiTypedObjectInterface"},
    {v = "obj_type_4", type = "MultiTypedObjectInterface"},
    {v = "obj_type_5", type = "MultiTypedObjectInterface"},
+   {v = "obj_type_6", type = "MultiTypedObjectInterface"},
+   {v = "obj_type_7", type = "MultiTypedObjectInterface"},
+   {v = "obj_type_8", type = "MultiTypedObjectInterface"},
    {v = "obj_pose_1", type = "Position3DInterface"},
    {v = "obj_pose_2", type = "Position3DInterface"},
    {v = "obj_pose_3", type = "Position3DInterface"},
    {v = "obj_pose_4", type = "Position3DInterface"},
-   {v = "obj_pose_5", type = "Position3DInterface"}
+   {v = "obj_pose_5", type = "Position3DInterface"},
+   {v = "obj_pose_6", type = "Position3DInterface"},
+   {v = "obj_pose_7", type = "Position3DInterface"},
+   {v = "obj_pose_8", type = "Position3DInterface"}
 }
 depends_actions  = nil
 depends_topics   = {
@@ -49,8 +55,10 @@ documentation      = [==[Call perception ROS action and post result to blackboar
 skillenv.skill_module(...)
 
 -- Constants
-local type_ifs = { obj_type_1, obj_type_2, obj_type_3, obj_type_4, obj_type_5 }
-local pose_ifs = { obj_pose_1, obj_pose_2, obj_pose_3, obj_pose_4, obj_pose_5 }
+local type_ifs = { obj_type_1, obj_type_2, obj_type_3, obj_type_4,
+		   obj_type_5, obj_type_6, obj_type_7, obj_type_8 }
+local pose_ifs = { obj_pose_1, obj_pose_2, obj_pose_3, obj_pose_4,
+		   obj_pose_5, obj_pose_6, obj_pose_7, obj_pose_8 }
 
 -- Jumpconditions
 
