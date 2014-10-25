@@ -109,7 +109,7 @@ handle_update(update) :-
 
 handle_terminate(terminate) :-
     log_info("Event: TERMINATE"),
-    bb_send_message("SkillerInterface::Skiller", "ReleaseControlMessage", []),
+    bb_send_message("SkillerInterface::Skiller", "ReleaseControlMessage", []) ; true,
     log_info("Released skiller control"),
     asserta(terminate(1)),
     yield("terminate", A).
@@ -153,15 +153,17 @@ init :-
     open_object_interfaces,
     bb_read_interfaces,
     % acquire control to skiller
-    bb_send_message("SkillerInterface::Skiller", "AcquireControlMessage", [[steal_control,true]]),
-    log_debug("hybris_2014.ecl: acquired control."),
+    (bb_send_message("SkillerInterface::Skiller", "AcquireControlMessage", [[steal_control,true]])
+      -> log_info("Successfully acquired control")
+      ;  log_warn("Failed to acquire exclusive control")
+    ),
     %bb_send_message("Navigator", "ResetParametersMessage", []),
     asserta(update("initial")),
     sleep(0.1).
 
 %% finalisation: close all interfaces & release skiller control
 fin :-
-    bb_send_message("SkillerInterface::Skiller", "ReleaseControlMessage", []),
+    bb_send_message("SkillerInterface::Skiller", "ReleaseControlMessage", []) ; true,
     bb_close_interface("SkillerInterface::Skiller"),
     bb_close_interface("Position3DInterface::Pose"),
     close_object_interfaces,
@@ -179,14 +181,17 @@ init :-
     open_object_interfaces,
     bb_read_interfaces,
     % acquire control to skiller
-    bb_send_message("SkillerInterface::Skiller", "AcquireControlMessage", [[steal_control,true]]),
-    log_debug("demo2014.ecl: acquired control."),
+    (bb_send_message("SkillerInterface::Skiller", "AcquireControlMessage", [[steal_control,true]])
+      -> log_info("Successfully acquired control")
+      ;  log_warn("Failed to acquire exclusive control")
+    ),
     asserta(update("initial")),
     sleep(0.1).
 
 %% finalisation: close all interfaces & release skiller control
 fin :-
-    bb_send_message("SkillerInterface::Skiller", "ReleaseControlMessage", []),
+    bb_send_message("SkillerInterface::Skiller", "ReleaseControlMessage", []) ; true,
+    close_object_interfaces,
     bb_close_interface("SkillerInterface::Skiller"),
     log_info("finalized hybris_2014").
 
