@@ -295,11 +295,23 @@ execute(drive_to(Node), Sr) :-
     log_info("Executing: drive_to(%w)", [Node]),
     concat_string(["goal=\"(at-base ", Node, ")\", use_env_server=true"], Arg),
     exec_skill("planexec", Arg),
+    log_info("Drive to %s", [Node]),
     sleep(0.1),
     wait_for_skiller,
     ( success, !, Sr=Node
-        ;
-       failed, !, Sr=""
+      ;
+      failed, !, Sr=""
+    ).
+
+execute(perceive_objects, false) :- 
+    log_info("Executing: perceive_objects"),
+    exec_skill("perceive_objects", ""),
+    sleep(0.1),
+    wait_for_skiller,
+    log_info("Perceiving objects"),
+    ( success, !, Sr=true, print("Perceiving objects succeeded"), update_objects_data
+      ;
+      failed, !, Sr=false, print("Perceiving objects failed")
     ).
 
 execute(sleep, false) :- log_debug("Executing: sleep"), sleep(0.5).
@@ -350,6 +362,7 @@ exog_action(req_update).
 
 %% primitive actions
 prim_action(drive_to(N)) :- place(N).
+prim_action(perceive_objects).
 prim_action(read_skiller_status).
 prim_action(sleep).
 prim_action(sleep(N)).
@@ -375,6 +388,9 @@ prim_fluent(intro).
 prim_fluent(num_runs).
 prim_fluent(error(E)).
 prim_fluent(exec_once).
+prim_fluent(place_visited(P)).
+prim_fluent(place_explored(P)).
+prim_fluent(reset_places).
 
 
 %% sensing
@@ -415,13 +431,14 @@ poss(send_switch_msg(I,M), true).
 poss(grab_box, and(executable, holding_box=false)).
 poss(set_verbose(Mode), true).
 poss(end_of_run, true).
+poss(perceive_objects, true).
 
 poss(update, true).
 poss(restart, true).
 
 
 %% initial state
-initially(at, "Charger Home").
+initially(at, "start").
 initially(holding_box, false).
 initially(ignore_status, false).
 initially(intro, false).
@@ -431,6 +448,9 @@ initially(error(grab_failed), false).
 initially(exec_once, true).
 initially(up_to_date, false).
 initially(skiller_status, "S_INACTIVE").
+initially(place_visited(N), false) :- place(N).
+initially(place_explored(N), false) :- place(N).
+initially(reset_places, false).
 
 %% definition of complex conditions
 proc(inactive, skiller_status = "S_INACTIVE").
@@ -439,37 +459,22 @@ proc(final, skiller_status = "S_FINAL").
 proc(failed, skiller_status = "S_FAILED").
 proc(executable, or(inactive, or(final, ignore_status=true)) ).
 
-proc(at_table(N), and(at=N, table(N))).
-proc(not_at_table(N), and(at=N, neg(table(N)))).
+proc(at_place(N), and(at=N, place(N))).
+proc(not_at_place(N), and(neg(at=N), place(N))).
 
+proc(next_action_goto_counter, and(at_place("start"), and(executable, holding_box=false))).
 
-proc(next_action_goto_counter(N), and(not_at_table(N), and(executable, and(holding_box=false)))).
+proc(next_action_explore(N), and(at_place(N), neg(place_explored(N)))).
 
-proc(next_action_goto_table(N), and(not_at_table(N), and(executable, and(holding_box=true, at_table("counter"))))).
+proc(next_action_move_on(N), and(place(N), neg(place_visited(N)))).
 
-proc(positions_left(N),neg(table_pos_visited(N))).
+proc(next_action_reset_place(N), and(reset_places=true, and(place(N), and(place_visited(N)=true, place_explored(N)=true)))).
 
+%proc(next_action_restart, neg(and(place(N), and(place_visited(N)=true, place_explored(N)=true)))).
 
+proc(next_action_goto_place(N), and(not_at_place(N), and(executable, and(holding_box=true, at_place("counter"))))).
 
-%% procedures
-proc(has_ori(Ori), [sense_rotation, ?(rotation=Rot), has_approx_ori(Rot, Ori)]).
-
-proc(turn_to_wanted_ori(Ori), [sleep(0.1), sense_rotation, ?(rotation=Rot), turn(Rot, Ori)]).
-
-/*
-proc(turn_tabletop_off, [send_switch_msg("object-tracking", "DisableSwitchMessage"),
-             send_switch_msg("object-fitting", "DisableSwitchMessage"),
-             send_switch_msg("object-detection", "DisableSwitchMessage"),
-             send_switch_msg("tabletop-detection", "DisableSwitchMessage")]).
-
-proc(turn_tabletop_on, [send_switch_msg("tabletop-detection", "EnableSwitchMessage"),
-            send_switch_msg("object-detection", "EnableSwitchMessage"),
-            send_switch_msg("object-fitting", "EnableSwitchMessage"),
-            send_switch_msg("object-tracking", "EnableSwitchMessage") ]).
-*/
-
-proc(turn_new_tabletop_off, send_switch_msg("tabletop-objects", "DisableSwitchMessage")).
-proc(turn_new_tabletop_on, send_switch_msg("tabletop-objects", "EnableSwitchMessage")).
+proc(positions_left(N),neg(place_visited(N))).
 
 proc(drive_to_place, [search(pi(n, [?(place(n)), drive_to(n)]))]).
 
@@ -485,12 +490,21 @@ proc(control, prioritized_interrupts(
      interrupt(running, sleep),
      
      % put things to exec once initially here
-     interrupt(exec_once=true,
-	[print("Executing planexec"),
-	 drive_to("table1_loc1_room1"),
-	 change_fluent(exec_once,false)]),
+     %interrupt(exec_once=true,
+	%[print("Executing perceive_objects"),
+	% perceive_objects,
+	% change_fluent(exec_once,false)]),
 
      interrupt(and(neg(verbose_mode(mute)), num_runs=2), set_verbose(mute)),
+
+     %% Resetting of places after a run
+     interrupt(n, next_action_reset_place(n),
+	       [print_var("Resetting place %s", n),
+		change_fluent(place_visited(n), false), change_fluent(place_explored(n), false)]),
+
+     interrupt(reset_places=true,
+	       [print("Resetting places done"),
+		change_fluent(reset_places, false), change_fluent(at, "start")]),
 
      % if an action failed, ignore the status of the skiller and retry
      interrupt(and(failed, ignore_status=false), restart),
@@ -505,32 +519,44 @@ proc(control, prioritized_interrupts(
       *     -> No: fail, possibly move to next table
       */
 
-%     interrupt(n, next_action_goto_counter(n),
-%	       [plan_exec("at(\"table1_loc1_room1\")")]),
+     interrupt(next_action_goto_counter,
+	       [print("Moving to start position"),
+		drive_to("table1_loc1_room1"), change_fluent(place_visited("table1_loc1_room1"), true)]),
 
      % run basic perception if we do not know any object worth of
      % closer inspection, yet.
-%     interrupt(n, and(at_table("counter"), (and(esl, positions_left(n)))),
-%	       [generate_goal_goto(N, Goal), plan_exec(Goal)]),
+     interrupt(n, next_action_explore(n),
+	       [print_var("Perceiving objects at %s", n),
+		perceive_objects, change_fluent(place_explored(n), true)]),
+
+     % run basic perception if we do not know any object worth of
+     % closer inspection, yet.
+     interrupt(n2, next_action_move_on(n2),
+	       [print_var("Moving on to %s", n2),
+		drive_to(n2), change_fluent(place_visited(n2), true)]),
 
      % fail, cannot find object
-%     interrupt(n, and(at_table("counter"), neg(positions_left(n))),
+%     interrupt(n, and(at_place("counter"), neg(positions_left(n))),
 %	       [restart]),
 
      % at the counter, having an object which is of type box, but it
      % is yet unknown which specific one it is -> inspect
-%     interrupt(and(at_table("counter"),and(holding_box=false, esl)),
+%     interrupt(and(at_place("counter"),and(holding_box=false, esl)),
 %	       [generate_goal_inspect(ObjID, Goal), plan_exec(Goal)]),
 
      % at the counter, picked up an object, and determined it to be
      % the wrong one -> put down and go on
-%     interrupt(and(at_table("counter"),and(holding_box=true, esl)),
+%     interrupt(and(at_place("counter"),and(holding_box=true, esl)),
 %	       [generate_goal_put_down(ObjID, Goal), plan_exec(Goal)]),
 
      % at the counter, picked up an object, and determined it to be
      % the correct one -> bring to table
-%     interrupt(and(at_table("counter"),and(holding_box=true, esl)),
+%     interrupt(and(at_place("counter"),and(holding_box=true, esl)),
 %	       [generate_goal_deliver(ObjID, Goal), plan_exec(Goal)]),
+
+     interrupt(true,
+	       [print("***** Run completed, resetting places *****"),
+		change_fluent(reset_places, true)]),
 
      interrupt(true, sleep)
     ])).
