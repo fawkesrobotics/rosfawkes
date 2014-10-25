@@ -463,7 +463,12 @@ execute(set_verbose(Mode), false) :-
 % ask for sensing result on command line
 % this is only a bug catch - if this appears,
 % something with the action is most likely wrong.
-execute(A,Sr) :- ask_execute(A,Sr).
+%execute(A,Sr) :- ask_execute(A,Sr).
+
+:- if(\+ debug_true).
+execute(A,_) :- (\+ senses(A, _), term_string(A, S),
+		 log_error("Action %s does not have an execute function", [S])) ; true.
+:- endif.
 
 %% exogenous actions
 exog_occurs(req_update) :- update(Date), retract(update(Date)).
