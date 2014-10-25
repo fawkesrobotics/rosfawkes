@@ -28,6 +28,7 @@
 :- module(hybris_2014).
 
 :- use_module(filepath).
+:- use_module(library(util)).
 
 :- include("indigolog-esl").
 % This doesn't work and we do not have a proper solution at this time
@@ -98,6 +99,8 @@ debug_true :- fail.
 
 :- log_info("Loading hybris_2014 IndiGolog agent").
 
+max_num_objects(5).
+max_num_places(4).
 
 %% event handlers
 handle_update(update) :-
@@ -117,6 +120,25 @@ handle_terminate(terminate) :-
 :- set_event_handler(terminate, handle_terminate/1).
 
 
+open_object_interfaces :-
+  max_num_objects(M),
+  \+ (between(1,M,N),
+      \+ (concat_string(["/percobj/", N], Id),
+	  log_info("Opening interfaces Position3DInterface|MultiTypedObjectInterface::%s", [Id]),
+	  bb_open_interface_reading("Position3DInterface", Id),
+	  bb_open_interface_reading("MultiTypedObjectInterface", Id))).
+
+close_object_interfaces :-
+  max_num_objects(M),
+  \+ (between(1,M,N),
+      \+ (concat_string(["Position3DInterface::/percobj/", N], PosId),
+	  concat_string(["MultiTypedObjectInterface::/percobj/", N], MultiId),
+	  log_info("Closing interface %s", [PosId]),
+	  bb_close_interface(PosId),
+	  log_info("Closing interface %s", [MultiId]),
+	  bb_close_interface(MultiId))).
+  
+
 %% initialisation and finalisation - only open all interfaces when on host caesar
 %% otherwise use less interfaces to enable simulation on desktops
 :- if(get_flag(hostname, "c1")).
@@ -127,17 +149,8 @@ handle_terminate(terminate) :-
 init :-
     bb_ensure_connected,!,
     bb_open_interface_reading("SkillerInterface","Skiller"),
-    bb_open_interface_reading("Position3DInterface","/percobj/1"),
-    bb_open_interface_reading("Position3DInterface","/percobj/2"),
-    bb_open_interface_reading("Position3DInterface","/percobj/3"),
-    bb_open_interface_reading("Position3DInterface","/percobj/4"),
-    bb_open_interface_reading("Position3DInterface","/percobj/5"),
-    bb_open_interface_reading("MultiTypedObjectInterface","/percobj/1"),
-    bb_open_interface_reading("MultiTypedObjectInterface","/percobj/2"),
-    bb_open_interface_reading("MultiTypedObjectInterface","/percobj/3"),
-    bb_open_interface_reading("MultiTypedObjectInterface","/percobj/4"),
-    bb_open_interface_reading("MultiTypedObjectInterface","/percobj/5"),
     bb_open_interface_reading("Position3DInterface", "Pose"),
+    open_object_interfaces,
     bb_read_interfaces,
     % acquire control to skiller
     bb_send_message("SkillerInterface::Skiller", "AcquireControlMessage", [[steal_control,true]]),
@@ -151,16 +164,7 @@ fin :-
     bb_send_message("SkillerInterface::Skiller", "ReleaseControlMessage", []),
     bb_close_interface("SkillerInterface::Skiller"),
     bb_close_interface("Position3DInterface::Pose"),
-    bb_close_interface("Position3DInterface::/percobj/1"),
-    bb_close_interface("Position3DInterface::/percobj/2"),
-    bb_close_interface("Position3DInterface::/percobj/3"),
-    bb_close_interface("Position3DInterface::/percobj/4"),
-    bb_close_interface("Position3DInterface::/percobj/5"),
-    bb_close_interface("MultiTypedObjectInterface::/percobj/1"),
-    bb_close_interface("MultiTypedObjectInterface::/percobj/2"),
-    bb_close_interface("MultiTypedObjectInterface::/percobj/3"),
-    bb_close_interface("MultiTypedObjectInterface::/percobj/4"),
-    bb_close_interface("MultiTypedObjectInterface::/percobj/5"),
+    close_object_interfaces,
     log_info("finalized hybris2014").
 
 :- else.
@@ -172,20 +176,11 @@ fin :-
 init :-
     bb_ensure_connected,!,
     bb_open_interface(r,"SkillerInterface","Skiller"),
+    open_object_interfaces,
     bb_read_interfaces,
     % acquire control to skiller
     bb_send_message("SkillerInterface::Skiller", "AcquireControlMessage", [[steal_control,true]]),
     log_debug("demo2014.ecl: acquired control."),
-    bb_open_interface(r,"Position3DInterface","/percobj/1"),
-    bb_open_interface(r,"Position3DInterface","/percobj/2"),
-    bb_open_interface(r,"Position3DInterface","/percobj/3"),
-    bb_open_interface(r,"Position3DInterface","/percobj/4"),
-    bb_open_interface(r,"Position3DInterface","/percobj/5"),
-    bb_open_interface(r,"MultiTypedObjectInterface","/percobj/1"),
-    bb_open_interface(r,"MultiTypedObjectInterface","/percobj/2"),
-    bb_open_interface(r,"MultiTypedObjectInterface","/percobj/3"),
-    bb_open_interface(r,"MultiTypedObjectInterface","/percobj/4"),
-    bb_open_interface(r,"MultiTypedObjectInterface","/percobj/5"),
     asserta(update("initial")),
     sleep(0.1).
 
@@ -280,11 +275,12 @@ check_for_msg.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 want_object("chocolate").
-place("start").
-place("table1_loc1_room1").
-place("table1_loc2_room1").
-place("table1_loc3_room1").
-place("table1_loc4_room1").
+
+%place("start").
+place(X) :- max_num_places(M), between(1,M,I), concat_string(["table1_loc", I, "_room1"], X).
+
+object(N) :- max_num_objects(M), !, between(1, M, N).
+
 
 %% auxiliary predicates to handle skiller status
 is_running("S_RUNNING").
