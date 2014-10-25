@@ -214,6 +214,60 @@ define_locations([[Node|_]|Tail]) :- assert(place(Node)), define_locations(Tail)
 define_places([]).
 define_places([[Node|_]|Tail]) :- assert(place(Node)), log_info("Defining %w to be a place", [Node]), define_places(Tail).
 
+% Possible types for object 1,2,... are stored in Types1,Types2,...
+% If the visibility history is less or equal to zero, an empty list is stored in the according variable
+update_objects_data :-
+    bb_read_interface("Position3DInterface::/percobj/1"),
+    bb_read_interface("Position3DInterface::/percobj/2"),
+    bb_read_interface("Position3DInterface::/percobj/3"),
+    bb_read_interface("Position3DInterface::/percobj/4"),
+    bb_read_interface("Position3DInterface::/percobj/5"),
+    bb_read_interface("MultiTypedObjectInterface::/percobj/1"),
+    bb_read_interface("MultiTypedObjectInterface::/percobj/2"),
+    bb_read_interface("MultiTypedObjectInterface::/percobj/3"),
+    bb_read_interface("MultiTypedObjectInterface::/percobj/4"),
+    bb_read_interface("MultiTypedObjectInterface::/percobj/5"),
+    bb_get("Position3DInterface::/percobj/1", "visibility_history", V1),
+    log_info("Object 1 visiblity history %d", [V1]),
+    get_multitypes(1, V1, Types1),
+    bb_get("Position3DInterface::/percobj/2", "visibility_history", V2),
+    log_info("Object 2 visiblity history %d", [V2]),
+    get_multitypes(2, V2, Types2),
+    bb_get("Position3DInterface::/percobj/3", "visibility_history", V3),
+    log_info("Object 3 visiblity history %d", [V3]),
+    get_multitypes(3, V3, Types3),
+    bb_get("Position3DInterface::/percobj/4", "visibility_history", V4),
+    log_info("Object 4 visiblity history %d", [V4]),
+    get_multitypes(4, V4, Types4),
+    bb_get("Position3DInterface::/percobj/5", "visibility_history", V5),
+    log_info("Object 5 visiblity history %d", [V5]),
+    get_multitypes(5, V5, Types5),
+    log_warn("READ ALL INTERFACES\n").
+
+get_multitypes(ObjNr, Visible, []) :-
+  Visible =< 0.
+
+get_multitypes(ObjNr, Visible, List ) :- 
+  Visible > 0,
+  concat_string(["MultiTypedObjectInterface::/percobj/", ObjNr], Interface),
+  %bb_read_interface(Interface),
+  append_types(1, Interface, [], Res1),
+  append_types(2, Interface, Res1, Res2),
+  append_types(3, Interface, Res2, Res3),
+  append_types(4, Interface, Res3, List),
+  log_info("Object %w could be of following types: %w", [ObjNr, List]).
+
+
+append_types(TypeId, Interface, List, Res) :-
+  concat_string(["type_", TypeId], Field),
+  bb_get(Interface, Field, T1),
+  string_length(T1, Len),
+  ( Len > 0 
+    -> Res = [T1|List]
+    ; Res = List
+  ).
+  
+
 
 % this predicate is called at the start of the think-hook
 % if an agent is writer to some interface, it should check for new messages here
@@ -571,7 +625,7 @@ proc(control, prioritized_interrupts(
 :- if(debug_true).
 % check for Golog syntax (experimental, only definitions
 % of actions and fluents are currenty checked)
-run :- basic_check, repeat, fail.
+run :- basic_check, !, repeat, fail.
 :- else.
 % the acutal program being performed (called from eclipse_thread.cpp)
 run :-
