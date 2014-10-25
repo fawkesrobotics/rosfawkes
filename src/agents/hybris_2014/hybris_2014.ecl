@@ -79,6 +79,12 @@ debug_true :- fail.
 
 :- dynamic place/1.
 :- dynamic situation/1.
+:- dynamic object_visible/2.
+:- dynamic object_visible_processed/2.
+:- dynamic object_types/2.
+:- dynamic object_types_processed/2.
+:- dynamic object_inspected/2.
+:- dynamic object_inspected_processed/2.
 
 % the following dynamic declarations are only needed
 % for the use of the indigolog ckecker (check_indigolog.ecl).
@@ -285,6 +291,12 @@ want_object("chocolate").
 place(X) :- max_num_places(M), between(1,M,I), concat_string(["table1_loc", I, "_room1"], X).
 
 object(N) :- max_num_objects(M), !, between(1, M, N).
+?- \+ (object(N), \+ assert(object_visible(N, false))).
+?- \+ (object(N), \+ assert(object_visible_processed(N, false))).
+?- \+ (object(N), \+ assert(object_types(N, []))).
+?- \+ (object(N), \+ assert(object_types_processed(N, false))).
+?- \+ (object(N), \+ assert(object_inspected(N, false))).
+?- \+ (object(N), \+ assert(object_inspected_processed(N, false))).
 
 
 %% auxiliary predicates to handle skiller status
@@ -331,6 +343,13 @@ verbose_mode(demo).
 %% Definitions what to do when an action should be executed
 %% execute(action, sensing_result) :- prolog predicates describing what to do.
 
+object_type_is_box([]) :- fail.
+object_type_is_box([H|T]) :- H = "box" ; object_type_is_box(T).
+
+object_type_is_wanted([], _) :- fail.
+object_type_is_wanted([H|T], O) :- H = O ; object_type_is_wanted(T, O).
+
+
 execute(update, Sr) :-
     log_debug("Executing: update"),
     bb_read_interfaces,
@@ -348,26 +367,64 @@ execute(read_skiller_status, Sr) :-
 
 execute(drive_to(Node), Sr) :- 
     log_info("Executing: drive_to(%w)", [Node]),
-    concat_string(["goal=\"(at-base ", Node, ")\", use_env_server=true"], Arg),
-    exec_skill("planexec", Arg),
+    %concat_string(["goal=\"(at-base ", Node, ")\", use_env_server=true"], Arg),
+    %exec_skill("planexec", Arg),
     log_info("Drive to %s", [Node]),
     sleep(0.1),
-    wait_for_skiller,
-    ( success, !, Sr=Node
-      ;
-      failed, !, Sr=""
-    ).
+    Sr=Node.
+    %wait_for_skiller,
+    %( success, !, Sr=Node
+    %  ;
+    %  failed, !, Sr=""
+    %).
 
 execute(perceive_objects, false) :- 
     log_info("Executing: perceive_objects"),
-    exec_skill("perceive_objects", ""),
+    %exec_skill("perceive_objects", ""),
     sleep(0.1),
-    wait_for_skiller,
+    %wait_for_skiller,
     log_info("Perceiving objects"),
-    ( success, !, Sr=true, print("Perceiving objects succeeded"), update_objects_data
-      ;
-      failed, !, Sr=false, print("Perceiving objects failed")
+    % fake a wanted object
+    (object_visible(1, false), !, log_warn("Setting object to visible"),
+     retract(object_visible(1, _)), assert(object_visible(1, true)),
+     retract(object_inspected(1, _)), assert(object_inspected(1, true)),
+     retract(object_types(1, _)), assert(object_types(1, ["box"]))
+     ;
+     log_info("Object already visible")
     ).
+    %( success, !, Sr=true, print("Perceiving objects succeeded"), update_objects_data
+    %  ;
+    %  failed, !, Sr=false, print("Perceiving objects failed")
+    %).
+
+execute(deliver_object(N), false) :-
+  log_info("Delivering object %d", [N]),
+  %concat_string(["goal=\"(at-base ", Node, ")\", use_env_server=true"], Arg),
+  %exec_skill("planexec", Arg),
+  sleep(1.0),
+  retract(object_visible(N, _)), assert(object_visible(N, false)),
+  retract(object_visible_processed(N, _)), assert(object_visible_processed(N, false)),
+  retract(object_inspected(N, _)), assert(object_inspected(N, false)),
+  retract(object_inspected_processed(N, _)), assert(object_inspected_processed(N, false)),
+  retract(object_types(N, _)), assert(object_types(N, [])),
+  retract(object_types_processed(N, _)), assert(object_types_processed(N, false)).
+  %wait_for_skiller,
+  %( success, !, Sr=Node
+  %  ;
+  %  failed, !, Sr=""
+  %).
+
+execute(inspect_object(N), false) :-
+  log_info("Inspecting object %d", [N]),
+  %concat_string(["goal=\"(at-base ", Node, ")\", use_env_server=true"], Arg),
+  %exec_skill("planexec", Arg),
+  sleep(1.0),
+  retract(object_types(N, _)), assert(object_types(N, ["box", "chocolate"])).
+  %wait_for_skiller,
+  %( success, !, Sr=Node
+  %  ;
+  %  failed, !, Sr=""
+  %).
 
 execute(sleep, false) :- log_debug("Executing: sleep"), sleep(0.5).
 
@@ -410,9 +467,31 @@ execute(A,Sr) :- ask_execute(A,Sr).
 
 %% exogenous actions
 exog_occurs(req_update) :- update(Date), retract(update(Date)).
+
+exog_occurs(object_seen(N)) :-
+  object(N), object_visible_processed(N, false), object_visible(N, true),
+  retract(object_visible_processed(N, false)), assert(object_visible_processed(N, true)),
+  log_error("EXOG: object_seen(%d)", [N]).
+
+exog_occurs(object_is_box(N)) :-
+  object(N), object_types_processed(N, false), object_types(N, T), object_type_is_box(T),
+  retract(object_types_processed(N, false)), assert(object_types_processed(N, true)),
+  log_error("EXOG: object_is_box (%d)", [N]).
+
+exog_occurs(object_is_wanted(N)) :-
+  object(N), object_inspected_processed(N, false), object_inspected(N, true), object_types(N, T),
+  want_object(O), object_type_is_wanted(T, O),
+  retract(object_inspected_processed(N, false)), assert(object_inspected_processed(N, true)),
+  log_error("EXOG: object_is_wanted(%d)", [N]).
+
 exog_occurs(_) :- fail.
 
 exog_action(req_update).
+
+
+exog_action(object_seen(N)).
+exog_action(object_is_box(N)).
+exog_action(object_is_wanted(N)).
 
 
 %% primitive actions
@@ -430,7 +509,9 @@ prim_action(wait_for_skiller).
 prim_action(send_switch_msg(Iface, Msg)).
 prim_action(end_of_run).
 prim_action(set_verbose(Mode)).
-prim_action(grab_box).
+%prim_action(grab_box).
+prim_action(deliver_object(N)) :- object(N).
+prim_action(inspect_object(N)) :- object(N).
 
 
 %% fluents
@@ -446,13 +527,19 @@ prim_fluent(exec_once).
 prim_fluent(place_visited(P)).
 prim_fluent(place_explored(P)).
 prim_fluent(reset_places).
+prim_fluent(obj_exists(N)).
+prim_fluent(obj_is_box(N)).
+prim_fluent(obj_inspected(N)).
+prim_fluent(obj_is_wanted(N)).
+%prim_fluent(object_visible(N)).
+%prim_fluent(object_types(N,T)).
 
 
 %% sensing
 senses(read_skiller_status, skiller_status).
 senses(update, skiller_status).
 senses(drive_to(N), at).
-senses(grab_box, holding_box).
+%senses(grab_box, holding_box).
 
 %% causal laws
 causes_val(change_fluent(Fluent, Value), Fluent, Value, true).
@@ -469,7 +556,15 @@ causes_val(end_of_run, num_runs, N, N is num_runs+1  ).
 % skiller status should be ignored for the first action after a restart
 causes_val(restart, ignore_status, true, true).
 causes_val(drive_to(N), ignore_status, false, true).
-causes_val(grab_box, ignore_status, false, true).
+%causes_val(grab_box, ignore_status, false, true).
+causes_val(deliver_object(N), obj_is_wanted(N), false, true).
+causes_val(deliver_object(N), obj_is_box(N), false, true).
+causes_val(deliver_object(N), obj_inspected(N), false, true).
+causes_val(inspect_object(N), obj_inspected(N), true, true).
+
+causes_val(object_seen(N),   obj_exists(N), true, true).
+causes_val(object_is_box(N), obj_is_box(N), true, true).
+causes_val(object_is_wanted(N), obj_is_wanted(N), true, true).
 
 %% preconditions
 % currently most actions are just possible, preconditions are
@@ -483,14 +578,15 @@ poss(print(S), true).
 poss(print_var(S,V), true).
 poss(wait_for_skiller, true).
 poss(send_switch_msg(I,M), true).
-poss(grab_box, and(executable, holding_box=false)).
+%poss(grab_box, and(executable, holding_box=false)).
 poss(set_verbose(Mode), true).
 poss(end_of_run, true).
 poss(perceive_objects, true).
+poss(deliver_object(N), and(object(N), obj_is_wanted(N))).
+poss(inspect_object(N), and(object(N), obj_is_box(N))).
 
 poss(update, true).
 poss(restart, true).
-
 
 %% initial state
 initially(at, "start").
@@ -506,6 +602,10 @@ initially(skiller_status, "S_INACTIVE").
 initially(place_visited(N), false) :- place(N).
 initially(place_explored(N), false) :- place(N).
 initially(reset_places, false).
+initially(obj_exists(N), false) :- object(N).
+initially(obj_is_box(N), false) :- object(N).
+initially(obj_inspected(N), false) :- object(N).
+initially(obj_is_wanted(N), false) :- object(N).
 
 %% definition of complex conditions
 proc(inactive, skiller_status = "S_INACTIVE").
@@ -525,13 +625,11 @@ proc(next_action_move_on(N), and(place(N), neg(place_visited(N)))).
 
 proc(next_action_reset_place(N), and(reset_places=true, and(place(N), and(place_visited(N)=true, place_explored(N)=true)))).
 
-%proc(next_action_restart, neg(and(place(N), and(place_visited(N)=true, place_explored(N)=true)))).
+proc(next_action_deliver(N), and(object(N), obj_is_wanted(N))).
 
-proc(next_action_goto_place(N), and(not_at_place(N), and(executable, and(holding_box=true, at_place("counter"))))).
+proc(next_action_inspect(N), and(object(N), and(obj_is_box(N), neg(obj_inspected(N))))).
 
-proc(positions_left(N),neg(place_visited(N))).
-
-proc(drive_to_place, [search(pi(n, [?(place(n)), drive_to(n)]))]).
+%proc(drive_to_place, [search(pi(n, [?(place(n)), drive_to(n)]))]).
 
 /* Main procedure running the agent.
  *
@@ -574,9 +672,18 @@ proc(control, prioritized_interrupts(
       *     -> No: fail, possibly move to next table
       */
 
-     interrupt(next_action_goto_counter,
-	       [print("Moving to start position"),
-		drive_to("table1_loc1_room1"), change_fluent(place_visited("table1_loc1_room1"), true)]),
+     
+     interrupt(n, next_action_deliver(n),
+	       [print_var("FOUND wanted object %d", n),
+		deliver_object(n)]),
+
+     interrupt(n, next_action_inspect(n),
+	       [print_var("Inspecting %d", n),
+		inspect_object(n)]),
+
+     %interrupt(next_action_goto_counter,
+	%       [print("Moving to start position"),
+	%	drive_to("table1_loc1_room1"), change_fluent(place_visited("table1_loc1_room1"), true)]),
 
      % run basic perception if we do not know any object worth of
      % closer inspection, yet.
