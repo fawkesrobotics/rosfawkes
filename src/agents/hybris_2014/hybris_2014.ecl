@@ -105,7 +105,7 @@ handle_update(update) :-
 
 handle_terminate(terminate) :-
     log_info("Event: TERMINATE"),
-    bb_send_message("Skiller", "ReleaseControlMessage", []),
+    bb_send_message("SkillerInterface::Skiller", "ReleaseControlMessage", []),
     log_info("Released skiller control"),
     asserta(terminate(1)),
     yield("terminate", A).
@@ -125,38 +125,42 @@ handle_terminate(terminate) :-
 %% gain skiller control
 init :-
     bb_ensure_connected,!,
-    bb_open_interface(r,"SkillerInterface","Skiller"),
+    bb_open_interface_reading("SkillerInterface","Skiller"),
+    bb_open_interface_reading("Position3DInterface","/percobj/1"),
+    bb_open_interface_reading("Position3DInterface","/percobj/2"),
+    bb_open_interface_reading("Position3DInterface","/percobj/3"),
+    bb_open_interface_reading("Position3DInterface","/percobj/4"),
+    bb_open_interface_reading("Position3DInterface","/percobj/5"),
+    bb_open_interface_reading("MultiTypedObjectInterface","/percobj/1"),
+    bb_open_interface_reading("MultiTypedObjectInterface","/percobj/2"),
+    bb_open_interface_reading("MultiTypedObjectInterface","/percobj/3"),
+    bb_open_interface_reading("MultiTypedObjectInterface","/percobj/4"),
+    bb_open_interface_reading("MultiTypedObjectInterface","/percobj/5"),
+    bb_open_interface_reading("Position3DInterface", "Pose"),
     bb_read_interfaces,
     % acquire control to skiller
-    bb_send_message("Skiller", "AcquireControlMessage", [[steal_control,true]]),
-    log_debug("demo2014.ecl: acquired control."),
-    bb_open_interface(r, "PanTiltInterface", "PanTilt RX28"),
-    %bb_open_interface(r, "SwitchInterface", "object-tracking"),
-    %bb_open_interface(r, "SwitchInterface", "object-fitting"),
-    %bb_open_interface(r, "SwitchInterface", "object-detection"),
-    %bb_open_interface(r, "SwitchInterface", "tabletop-detection"),
-    bb_open_interface(r, "SwitchInterface", "tabletop-objects"),
-    bb_open_interface(r, "Position3DInterface", "Pose"),
-    bb_open_interface(r, "NavigatorInterface", "Navigator"),
-    bb_open_interface(r, "KatanaInterface", "Katana"),
-    bb_send_message("Navigator", "ResetParametersMessage", []),
+    bb_send_message("SkillerInterface::Skiller", "AcquireControlMessage", [[steal_control,true]]),
+    log_debug("hybris_2014.ecl: acquired control."),
+    %bb_send_message("Navigator", "ResetParametersMessage", []),
     asserta(update("initial")),
     sleep(0.1).
 
 %% finalisation: close all interfaces & release skiller control
 fin :-
-    bb_send_message("Skiller", "ReleaseControlMessage", []),
-    bb_close_interface("Skiller"),
-    bb_close_interface("PanTilt RX28"),
-    %bb_close_interface("object-tracking"),
-    %bb_close_interface("object-fitting"),
-    %bb_close_interface("object-detection"),
-    %bb_close_interface("tabletop-detection"),
-    bb_close_interface("tabletop-objects"),
-    bb_close_interface("Pose"),
-    bb_close_interface("Navigator"),
-    bb_close_interface("Katana"),
-    log_info("finallized demo2014").
+    bb_send_message("SkillerInterface::Skiller", "ReleaseControlMessage", []),
+    bb_close_interface("SkillerInterface::Skiller"),
+    bb_close_interface("Position3DInterface::Pose"),
+    bb_close_interface("Position3DInterface::/percobj/1"),
+    bb_close_interface("Position3DInterface::/percobj/2"),
+    bb_close_interface("Position3DInterface::/percobj/3"),
+    bb_close_interface("Position3DInterface::/percobj/4"),
+    bb_close_interface("Position3DInterface::/percobj/5"),
+    bb_close_interface("MultiTypedObjectInterface::/percobj/1"),
+    bb_close_interface("MultiTypedObjectInterface::/percobj/2"),
+    bb_close_interface("MultiTypedObjectInterface::/percobj/3"),
+    bb_close_interface("MultiTypedObjectInterface::/percobj/4"),
+    bb_close_interface("MultiTypedObjectInterface::/percobj/5"),
+    log_info("finalized hybris2014").
 
 :- else.
 % on desktops:
@@ -169,26 +173,26 @@ init :-
     bb_open_interface(r,"SkillerInterface","Skiller"),
     bb_read_interfaces,
     % acquire control to skiller
-    bb_send_message("Skiller", "AcquireControlMessage", [[steal_control,true]]),
+    bb_send_message("SkillerInterface::Skiller", "AcquireControlMessage", [[steal_control,true]]),
     log_debug("demo2014.ecl: acquired control."),
-    bb_open_interface(r,"Position3DInterface","/objperc/1"),
-    bb_open_interface(r,"Position3DInterface","/objperc/2"),
-    bb_open_interface(r,"Position3DInterface","/objperc/3"),
-    bb_open_interface(r,"Position3DInterface","/objperc/4"),
-    bb_open_interface(r,"Position3DInterface","/objperc/5"),
-    bb_open_interface(r,"MultiTypedObjectInterface","/objperc/1"),
-    bb_open_interface(r,"MultiTypedObjectInterface","/objperc/2"),
-    bb_open_interface(r,"MultiTypedObjectInterface","/objperc/3"),
-    bb_open_interface(r,"MultiTypedObjectInterface","/objperc/4"),
-    bb_open_interface(r,"MultiTypedObjectInterface","/objperc/5"),
+    bb_open_interface(r,"Position3DInterface","/percobj/1"),
+    bb_open_interface(r,"Position3DInterface","/percobj/2"),
+    bb_open_interface(r,"Position3DInterface","/percobj/3"),
+    bb_open_interface(r,"Position3DInterface","/percobj/4"),
+    bb_open_interface(r,"Position3DInterface","/percobj/5"),
+    bb_open_interface(r,"MultiTypedObjectInterface","/percobj/1"),
+    bb_open_interface(r,"MultiTypedObjectInterface","/percobj/2"),
+    bb_open_interface(r,"MultiTypedObjectInterface","/percobj/3"),
+    bb_open_interface(r,"MultiTypedObjectInterface","/percobj/4"),
+    bb_open_interface(r,"MultiTypedObjectInterface","/percobj/5"),
     asserta(update("initial")),
     sleep(0.1).
 
 %% finalisation: close all interfaces & release skiller control
 fin :-
-    bb_send_message("Skiller", "ReleaseControlMessage", []),
-    bb_close_interface("Skiller"),
-    log_info("finallized demo2014").
+    bb_send_message("SkillerInterface::Skiller", "ReleaseControlMessage", []),
+    bb_close_interface("SkillerInterface::Skiller"),
+    log_info("finalized hybris_2014").
 
 :- endif.
 
@@ -240,15 +244,15 @@ is_failed("S_FAILED").
 
 wait_for_skiller :-
     bb_read_interfaces,
-    bb_read_interface("Skiller", "status", Status),
+    bb_get("SkillerInterface::Skiller", "status", Status),
     is_running(Status), sleep(0.1),
     wait_for_skiller.
 wait_for_skiller :-
-    bb_read_interface("Skiller", "status", Status),
+    bb_get("SkillerInterface::Skiller", "status", Status),
     not_running(Status).
 
-success :- bb_read_interface("Skiller", "status", Status), is_final(Status).
-failed :- bb_read_interface("Skiller", "status", Status), is_failed(Status).
+success :- bb_get("SkillerInterface::Skiller", "status", Status), is_final(Status).
+failed :- bb_get("SkillerInterface::Skiller", "status", Status), is_failed(Status).
 
 decide_on_sensing(true) :- success.
 decide_on_sensing(false) :- failed.
@@ -261,9 +265,9 @@ exec_skill(Skill, Arguments) :-
     append_strings(Skill, "{", Str1),
     append_strings(Str1, Arguments, Str2),
     append_strings(Str2, "}", Str3),
-    bb_send_message("Skiller", "ExecSkillMessage", [["skill_string", Str3]]).
+    bb_send_message("SkillerInterface::Skiller", "ExecSkillMessage", [["skill_string", Str3]]).
 
-exec_skill2(Skillmsg) :- bb_send_message("Skiller", "ExecSkillMessage", [["skill_string", Skillmsg]]).
+exec_skill2(Skillmsg) :- bb_send_message("SkillerInterface::Skiller", "ExecSkillMessage", [["skill_string", Skillmsg]]).
 
 %% constants
 spot("C").
@@ -282,7 +286,7 @@ execute(update, Sr) :-
     log_debug("Executing: update"),
     bb_read_interfaces,
     check_for_msg,
-    bb_read_interface("Skiller", "status", Sr), log_debug("skiller status is: %w", [Sr]).
+    bb_get("SkillerInterface::Skiller", "status", Sr), log_debug("skiller status is: %w", [Sr]).
 
 execute(wait_for_skiller, false) :-
     log_debug("wait..."),
@@ -291,7 +295,7 @@ execute(wait_for_skiller, false) :-
 
 execute(read_skiller_status, Sr) :-
     log_info("Executing: read_skiller_status"),
-    bb_read_interface("Skiller", "status", Sr), log_debug("skiller status is: %w", [Sr]).
+    bb_get("SkillerInterface::Skiller", "status", Sr), log_debug("skiller status is: %w", [Sr]).
 
 execute(drive_to(Node), Sr) :- 
     log_info("Executing: drive_to(%w)", [Node]),
