@@ -23,7 +23,7 @@ module(..., skillenv.module_init)
 
 -- Crucial skill information
 name               = "perceive_objects"
-fsm                = SkillHSM:new{name=name, start="UPDATE_OBJECTS", debug=true}
+fsm                = SkillHSM:new{name=name, start="INIT", debug=true}
 depends_skills     = {"update_objects"}
 depends_interfaces = {
    {v = "obj_type_1", type = "MultiTypedObjectInterface"},
@@ -68,6 +68,7 @@ fsm:define_states{
    export_to=_M,
    closure={objects=objects},
 
+   {"INIT", JumpState},
    {"UPDATE_OBJECTS", SkillJumpState, skills={{update_objects}}, final_to="WAIT_MESSAGE", fail_to="FAILED"},
    {"WAIT_MESSAGE", JumpState},
    {"PUBLISH", JumpState}
@@ -75,15 +76,16 @@ fsm:define_states{
 
 -- Transitions
 fsm:add_transitions{
+   {"INIT", "UPDATE_OBJECTS", cond="vars.update"},
+   {"INIT", "WAIT_MESSAGE", cond="not vars.update"},
    {"WAIT_MESSAGE", "PUBLISH", cond="#objects.messages > 0"},
    {"PUBLISH", "FINAL", cond=true}
 }
 
-function UPDATE_OBJECTS:init()
+function INIT:init()
    -- reset latching subscriber so we later retrieve the latest message
    objects:reset_messages()
 end
-
 
 function PUBLISH:init()
    -- Should not happen, but just in case...
