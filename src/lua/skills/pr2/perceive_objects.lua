@@ -109,42 +109,47 @@ function PUBLISH:init()
 	 print("Received message:")
 	 m:print("  ")
       end
-      local id    = m.values.objects[i].values.id
-      local types = m.values.objects[i].values.types
-      local frame = m.values.header.values.frame_id
-      -- With geometry_msgs/Point
-      local pos   = m.values.objects[i].values.centroid.values
-      local rot   = {x=0., y=0., z=0., w=1.}
-      -- If we were using geometry_msgs/Pose
-      --local pos   = m.values.objects[i].values.centroid.values.position.values
-      --local rot   = m.values.objects[i].values.centroid.values.orientation.values
+      if m.values.objects[i].values.active then
 
-      if #types > 4 then
-	 print_warn("Object %d has more than 4 types: %s", #types, tostring(types))
+	 local id    = m.values.objects[i].values.id
+	 local types = m.values.objects[i].values.types
+	 local frame = m.values.header.values.frame_id
+	 -- With geometry_msgs/Point
+	 local pos   = m.values.objects[i].values.centroid.values
+	 local rot   = {x=0., y=0., z=0., w=1.}
+	 -- If we were using geometry_msgs/Pose
+	 --local pos   = m.values.objects[i].values.centroid.values.position.values
+	 --local rot   = m.values.objects[i].values.centroid.values.orientation.values
+
+	 if #types > 4 then
+	    print_warn("Object %d has more than 4 types: %s", #types, tostring(types))
+	 end
+
+	 type_ifs[i]:set_obj_id(id)
+
+	 if #types > 0 then type_ifs[i]:set_type_1(types[1]) end
+	 if #types > 1 then type_ifs[i]:set_type_2(types[2]) end
+	 if #types > 2 then type_ifs[i]:set_type_3(types[3]) end
+	 if #types > 3 then type_ifs[i]:set_type_4(types[4]) end
+
+	 pose_ifs[i]:set_frame(frame)
+
+	 pose_ifs[i]:set_translation(0, pos.x)
+	 pose_ifs[i]:set_translation(1, pos.y)
+	 pose_ifs[i]:set_translation(2, pos.z)
+
+	 pose_ifs[i]:set_rotation(0, rot.x)
+	 pose_ifs[i]:set_rotation(1, rot.y)
+	 pose_ifs[i]:set_rotation(2, rot.z)
+	 pose_ifs[i]:set_rotation(3, rot.w)
+
+	 -- Just set to one, would need proper ID matching and since we
+	 -- expect this particular perception to be one-shot it wouldn't
+	 -- make much sense anyway
+	 pose_ifs[i]:set_visibility_history(1)
+      else
+	 pose_ifs[i]:set_visibility_history(-1)
       end
-
-      type_ifs[i]:set_obj_id(id)
-
-      if #types > 0 then type_ifs[i]:set_type_1(types[1]) end
-      if #types > 1 then type_ifs[i]:set_type_2(types[2]) end
-      if #types > 2 then type_ifs[i]:set_type_3(types[3]) end
-      if #types > 3 then type_ifs[i]:set_type_4(types[4]) end
-
-      pose_ifs[i]:set_frame(frame)
-
-      pose_ifs[i]:set_translation(0, pos.x)
-      pose_ifs[i]:set_translation(1, pos.y)
-      pose_ifs[i]:set_translation(2, pos.z)
-
-      pose_ifs[i]:set_rotation(0, rot.x)
-      pose_ifs[i]:set_rotation(1, rot.y)
-      pose_ifs[i]:set_rotation(2, rot.z)
-      pose_ifs[i]:set_rotation(3, rot.w)
-
-      -- Just set to one, would need proper ID matching and since we
-      -- expect this particular perception to be one-shot it wouldn't
-      -- make much sense anyway
-      pose_ifs[i]:set_visibility_history(1)
    end
 
    -- Mark remaining interfaces as object not visible
