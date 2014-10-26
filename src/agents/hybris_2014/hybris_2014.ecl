@@ -390,22 +390,22 @@ execute(drive_to(Node), Sr) :-
 
 execute(perceive_objects, false) :- 
     log_info("Executing: perceive_objects"),
-    %exec_skill("perceive_objects", ""),
+    exec_skill("perceive_objects", "update=false"),
     sleep(0.1),
-    %wait_for_skiller,
+    wait_for_skiller,
     log_info("Perceiving objects"),
     % fake a wanted object
-    (object_visible(1, false), !, log_warn("Setting object to visible"),
-     retract(object_visible(1, _)), assert(object_visible(1, true)),
-     retract(object_inspected(1, _)), assert(object_inspected(1, true)),
-     retract(object_types(1, _)), assert(object_types(1, ["box"]))
-     ;
-     log_info("Object already visible")
-    ).
-    %( success, !, Sr=true, print("Perceiving objects succeeded"), update_objects_data
-    %  ;
-    %  failed, !, Sr=false, print("Perceiving objects failed")
+    %(object_visible(1, false), !, log_warn("Setting object to visible"),
+    % retract(object_visible(1, _)), assert(object_visible(1, true)),
+    % retract(object_inspected(1, _)), assert(object_inspected(1, true)),
+    % retract(object_types(1, _)), assert(object_types(1, ["box"]))
+    % ;
+    % log_info("Object already visible")
     %).
+    ( success, !, Sr=true, log_info("Perceiving objects succeeded"), update_objects_data
+      ;
+      failed, !, Sr=false, log_info("Perceiving objects failed")
+    ).
 
 execute(deliver_object(N), false) :-
   log_info("Delivering object %d", [N]),
