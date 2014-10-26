@@ -223,45 +223,58 @@ define_places([[Node|_]|Tail]) :- assert(place(Node)), log_info("Defining %w to 
 % Possible types for object 1,2,... are stored in Types1,Types2,...
 % If the visibility history is less or equal to zero, an empty list is stored in the according variable
 update_objects_data :-
-    bb_read_interface("Position3DInterface::/percobj/1"),
-    bb_read_interface("Position3DInterface::/percobj/2"),
-    bb_read_interface("Position3DInterface::/percobj/3"),
-    bb_read_interface("Position3DInterface::/percobj/4"),
-    bb_read_interface("Position3DInterface::/percobj/5"),
-    bb_read_interface("MultiTypedObjectInterface::/percobj/1"),
-    bb_read_interface("MultiTypedObjectInterface::/percobj/2"),
-    bb_read_interface("MultiTypedObjectInterface::/percobj/3"),
-    bb_read_interface("MultiTypedObjectInterface::/percobj/4"),
-    bb_read_interface("MultiTypedObjectInterface::/percobj/5"),
-    bb_get("Position3DInterface::/percobj/1", "visibility_history", V1),
-    log_info("Object 1 visiblity history %d", [V1]),
-    get_multitypes(1, V1, Types1),
-    bb_get("Position3DInterface::/percobj/2", "visibility_history", V2),
-    log_info("Object 2 visiblity history %d", [V2]),
-    get_multitypes(2, V2, Types2),
-    bb_get("Position3DInterface::/percobj/3", "visibility_history", V3),
-    log_info("Object 3 visiblity history %d", [V3]),
-    get_multitypes(3, V3, Types3),
-    bb_get("Position3DInterface::/percobj/4", "visibility_history", V4),
-    log_info("Object 4 visiblity history %d", [V4]),
-    get_multitypes(4, V4, Types4),
-    bb_get("Position3DInterface::/percobj/5", "visibility_history", V5),
-    log_info("Object 5 visiblity history %d", [V5]),
-    get_multitypes(5, V5, Types5),
-    log_warn("READ ALL INTERFACES\n").
+  log_info("Processing blackboard data"),
+  % iterate over all objects, use pattern \+ (generator(N), \+ process(N))
+  \+ (object(N),
+      log_info("Processing object %d", [N]),
+      \+ (interface_changed(N)  % the interface has changed, therefore process it
+	  -> (interface_object_visible(N)
+	      -> log_info("Object %d is VISIBLE", [N]),
+		 retract(object_visible(N, _)), assert(object_visible(N, true)),
+		 get_multitypes(N, T), object_types(N, OldT),
+		 intersection(T, OldT, CommonT), length(CommonT, LCommonT), length(T, LT), length(OldT, LOldT),
+		 join_string(T, " ", ST), join_string(OldT, " ", SOldT),
+		 log_info("Object %d old types: %s  new types: %s", [N, SOldT, ST]),
+		 ( (LCommonT =\= LT ; LCommonT =\= LOldT)
+		   -> retract(object_types(N, _)), assert(object_types(N, T)),
+		      retract(object_types_processed(N, _)), assert(object_types_processed(N, false))
+		   ; true
+		 )
+	      ;
+	      retract(object_visible(N, _)), assert(object_visible(N, false))
+	     ),
+	     retract(object_visible_processed(N, _)), assert(object_visible_processed(N, false))
+	  ; true
+	 )
+     ).
 
-get_multitypes(ObjNr, Visible, []) :-
-  Visible =< 0.
+interface_object_visible(N) :-
+  object(N), !,
+  concat_string(["Position3DInterface::/percobj/", N], Interface),
+  bb_get(Interface, "visibility_history", Visible),
+  Visible > 0.
 
-get_multitypes(ObjNr, Visible, List ) :- 
-  Visible > 0,
-  concat_string(["MultiTypedObjectInterface::/percobj/", ObjNr], Interface),
+interface_changed(N) :-
+  object(N), !,
+  concat_string(["Position3DInterface::/percobj/", N], Interface),
+  bb_read_interface(Interface),
+  bb_interface_changed(Interface),
+  log_warn("Interface %s has changed", [Interface]),
+  concat_string(["MultiTypedObjectInterface::/percobj/", N], TypeInterface),
+  bb_read_interface(TypeInterface).
+
+
+get_multitypes(N, []) :- \+ interface_object_visible(N).
+
+get_multitypes(N, List ) :- 
+  interface_object_visible(N),
+  concat_string(["MultiTypedObjectInterface::/percobj/", N], Interface),
   %bb_read_interface(Interface),
   append_types(1, Interface, [], Res1),
   append_types(2, Interface, Res1, Res2),
   append_types(3, Interface, Res2, Res3),
   append_types(4, Interface, Res3, List),
-  log_info("Object %w could be of following types: %w", [ObjNr, List]).
+  log_info("Object %w could be of following types: %w", [N, List]).
 
 
 append_types(TypeId, Interface, List, Res) :-
