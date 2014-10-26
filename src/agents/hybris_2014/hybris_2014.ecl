@@ -479,6 +479,10 @@ execute(set_verbose(Mode), false) :-
 % something with the action is most likely wrong.
 %execute(A,Sr) :- ask_execute(A,Sr).
 
+% Just to get rid of warnings
+execute(start_interrupts, false) :- true.
+execute(stop_interrupts, false) :- true.
+
 :- if(\+ debug_true).
 execute(A,_) :- (\+ senses(A, _), term_string(A, S),
 		 log_error("Action %s does not have an execute function", [S])) ; true.
