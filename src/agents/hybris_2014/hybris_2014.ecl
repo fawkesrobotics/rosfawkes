@@ -105,7 +105,7 @@ debug_true :- fail.
 
 :- log_info("Loading hybris_2014 IndiGolog agent").
 
-max_num_objects(5).
+max_num_objects(8).
 max_num_places(4).
 
 %% event handlers
