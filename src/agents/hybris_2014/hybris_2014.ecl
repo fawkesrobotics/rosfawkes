@@ -349,8 +349,8 @@ object_type_is_wanted([H|T], O) :- H = O ; object_type_is_wanted(T, O).
 
 execute(update, Sr) :-
     log_debug("Executing: update"),
-    bb_read_interfaces,
     check_for_msg,
+    bb_read_interface("SkillerInterface::Skiller"),
     bb_get("SkillerInterface::Skiller", "status", Sr), log_debug("skiller status is: %w", [Sr]).
 
 execute(wait_for_skiller, false) :-
@@ -741,8 +741,8 @@ run :- basic_check, !, repeat, fail.
 run :-
     (
         %basic_check, halt,
-        bb_read_interfaces,
-        check_for_msg,
+        %bb_read_interfaces,
+        %check_for_msg,
         run_agent_once,
         % loop infinitly, needed for proper unloading
         repeat,
