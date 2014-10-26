@@ -307,16 +307,13 @@ is_final("S_FINAL").
 is_failed("S_FAILED").
 
 wait_for_skiller :-
-    bb_read_interfaces,
-    bb_get("SkillerInterface::Skiller", "status", Status),
-    is_running(Status), sleep(0.1),
-    wait_for_skiller.
-wait_for_skiller :-
-    bb_get("SkillerInterface::Skiller", "status", Status),
-    not_running(Status).
+  repeat, sleep(0.1),
+  bb_read_interface("SkillerInterface::Skiller"),
+  bb_get("SkillerInterface::Skiller", "status", Status),
+  not_running(Status).
 
 success :- bb_get("SkillerInterface::Skiller", "status", Status), is_final(Status).
-failed :- bb_get("SkillerInterface::Skiller", "status", Status), is_failed(Status).
+failed :-  bb_get("SkillerInterface::Skiller", "status", Status), is_failed(Status).
 
 decide_on_sensing(true) :- success.
 decide_on_sensing(false) :- failed.
