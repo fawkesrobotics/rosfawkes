@@ -428,8 +428,12 @@ execute(inspect_object(N), false) :-
   log_info("Inspecting object %d", [N]),
   %concat_string(["goal=\"(at-base ", Node, ")\", use_env_server=true"], Arg),
   %exec_skill("planexec", Arg),
-  sleep(1.0),
-  retract(object_types(N, _)), assert(object_types(N, ["box", "chocolate"])).
+  sleep(0.1),
+  retract(object_inspected(N, _)), assert(object_inspected(N, true)),
+  retract(object_inspected_processed(N, _)), assert(object_inspected_processed(N, false)),
+  retract(object_types(N, _)), assert(object_types(N, ["box", "chocolate"])),
+  retract(object_types_processed(N, _)), assert(object_types_processed(N, true)),
+  object_types(N, T), join_string(T, " ", S), log_info("Types now: %s", [S]).
   %wait_for_skiller,
   %( success, !, Sr=Node
   %  ;
