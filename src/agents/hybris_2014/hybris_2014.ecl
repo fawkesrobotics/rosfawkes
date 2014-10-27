@@ -226,7 +226,7 @@ update_objects_data :-
   log_info("Processing blackboard data"),
   % iterate over all objects, use pattern \+ (generator(N), \+ process(N))
   \+ (object(N),
-      log_info("Processing object %d", [N]),
+      log_info("Processing object interface %d", [N]),
       \+ (interface_changed(N)  % the interface has changed, therefore process it
 	  -> (interface_object_visible(N)
 	      -> log_info("Object %d is VISIBLE", [N]),
@@ -249,13 +249,11 @@ update_objects_data :-
      ).
 
 interface_object_visible(N) :-
-  object(N), !,
   concat_string(["Position3DInterface::/percobj/", N], Interface),
   bb_get(Interface, "visibility_history", Visible),
   Visible > 0.
 
 interface_changed(N) :-
-  object(N), !,
   concat_string(["Position3DInterface::/percobj/", N], Interface),
   bb_read_interface(Interface),
   bb_interface_changed(Interface),
@@ -393,23 +391,22 @@ execute(read_skiller_status, Sr) :-
 
 execute(drive_to(Node), Sr) :- 
     log_info("Executing: drive_to(%w)", [Node]),
-    %concat_string(["goal=\"(at-base ", Node, ")\", use_env_server=true"], Arg),
-    %exec_skill("planexec", Arg),
-    log_info("Drive to %s", [Node]),
-    sleep(0.1),
-    Sr=Node.
-    %wait_for_skiller,
-    %( success, !, Sr=Node
-    %  ;
-    %  failed, !, Sr=""
-    %).
+    concat_string(["goal=\"(at-base ", Node, ")\", use_env_server=true"], Arg),
+    log_warn("Drive to %s", [Node]),
+    exec_skill_wait("planexec", Arg),
+    log_error("DRIVE completed"),
+    sleep(0.5),
+    ( success, !, Sr=Node
+      ;
+      failed, !, Sr=""
+    ).
 
 execute(perceive_objects, false) :- 
     log_info("Executing: perceive_objects"),
-    exec_skill("perceive_objects", "update=false"),
-    sleep(0.1),
-    wait_for_skiller,
-    log_info("Perceiving objects"),
+    %exec_skill_wait("perceive_objects", "update=false"),
+    log_warn("PERCEPTION commencing"),
+    exec_skill_wait("perceive_objects", "update=true"),
+    log_error("PERCEPTION run completed"),
     % fake a wanted object
     %(object_visible(1, false), !, log_warn("Setting object to visible"),
     % retract(object_visible(1, _)), assert(object_visible(1, true)),
@@ -447,8 +444,8 @@ execute(inspect_object(N), false) :-
   sleep(0.1),
   retract(object_inspected(N, _)), assert(object_inspected(N, true)),
   retract(object_inspected_processed(N, _)), assert(object_inspected_processed(N, false)),
-  retract(object_types(N, _)), assert(object_types(N, ["box", "chocolate"])),
-  retract(object_types_processed(N, _)), assert(object_types_processed(N, true)),
+  %retract(object_types(N, _)), assert(object_types(N, ["box", "chocolate"])),
+  %retract(object_types_processed(N, _)), assert(object_types_processed(N, true)),
   object_types(N, T), join_string(T, " ", S), log_info("Types now: %s", [S]).
   %wait_for_skiller,
   %( success, !, Sr=Node
@@ -697,6 +694,9 @@ proc(control, prioritized_interrupts(
 	       [print_var("Resetting place %s", n),
 		change_fluent(place_visited(n), false), change_fluent(place_explored(n), false)]),
 
+     % for testing, stop after single cycle
+     interrupt(reset_places=true, [sleep]),
+
      interrupt(reset_places=true,
 	       [print("Resetting places done"),
 		change_fluent(reset_places, false), change_fluent(at, "start")]),
@@ -731,13 +731,15 @@ proc(control, prioritized_interrupts(
      % closer inspection, yet.
      interrupt(n, next_action_explore(n),
 	       [print_var("Perceiving objects at %s", n),
-		perceive_objects, change_fluent(place_explored(n), true)]),
+		change_fluent(place_explored(n), true),
+		perceive_objects]),
 
      % run basic perception if we do not know any object worth of
      % closer inspection, yet.
      interrupt(n2, next_action_move_on(n2),
 	       [print_var("Moving on to %s", n2),
-		drive_to(n2), change_fluent(place_visited(n2), true)]),
+		change_fluent(place_visited(n2), true),
+		drive_to(n2)]),
 
      % fail, cannot find object
 %     interrupt(n, and(at_place("counter"), neg(positions_left(n))),
