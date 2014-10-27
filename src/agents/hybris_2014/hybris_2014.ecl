@@ -325,6 +325,14 @@ wait_for_skiller :-
   bb_get("SkillerInterface::Skiller", "status", Status),
   not_running(Status).
 
+wait_for_skiller(MsgId) :-
+  repeat, sleep(0.1),
+  bb_read_interface("SkillerInterface::Skiller"),
+  bb_get("SkillerInterface::Skiller", "msgid", SkillerMsgId),
+  SkillerMsgId = MsgId,
+  bb_get("SkillerInterface::Skiller", "status", Status),
+  not_running(Status).
+
 success :- bb_get("SkillerInterface::Skiller", "status", Status), is_final(Status).
 failed :-  bb_get("SkillerInterface::Skiller", "status", Status), is_failed(Status).
 
@@ -335,13 +343,21 @@ inverse_decide(false) :- success.
 inverse_decide(true) :- failed.
 
 %% auxiliary predicates to execute skills
-exec_skill(Skill, Arguments) :-
-    append_strings(Skill, "{", Str1),
-    append_strings(Str1, Arguments, Str2),
-    append_strings(Str2, "}", Str3),
-    bb_send_message("SkillerInterface::Skiller", "ExecSkillMessage", [["skill_string", Str3]]).
+exec_skill_wait(Skill, Arguments) :-
+  exec_skill(Skill, Arguments, MsgId),
+  wait_for_skiller(MsgId).
 
-exec_skill2(Skillmsg) :- bb_send_message("SkillerInterface::Skiller", "ExecSkillMessage", [["skill_string", Skillmsg]]).
+exec_skill(Skill, Arguments) :-
+  exec_skill(Skill, Arguments, _).
+
+exec_skill(Skill, Arguments, MsgId) :-
+  append_strings(Skill, "{", Str1),
+  append_strings(Str1, Arguments, Str2),
+  append_strings(Str2, "}", Str3),
+  bb_send_message("SkillerInterface::Skiller", "ExecSkillMessage", [["skill_string", Str3]], MsgId).
+
+exec_skill2(Skillmsg) :-
+  bb_send_message("SkillerInterface::Skiller", "ExecSkillMessage", [["skill_string", Skillmsg]]).
 
 %% constants
 
