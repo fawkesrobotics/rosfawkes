@@ -40,3 +40,4 @@ action_skill.use("pr2.update_objects", "do_object_tracking", "hybris_c1_msgs/DoO
 service_skill.use("pr2.reset_perception", "reset_perception_service", "hybris_c1_msgs/ResetPerceptionService")
 
 skillenv.use_skill("skills.pr2.perceive_objects")
+skillenv.use_skill("skills.pr2.inspect_logo")

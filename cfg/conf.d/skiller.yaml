@@ -44,4 +44,5 @@ skiller:
         obj_type_6: MultiTypedObjectInterface::/percobj/6
         obj_type_7: MultiTypedObjectInterface::/percobj/7
         obj_type_8: MultiTypedObjectInterface::/percobj/8
+        obj_type_logo: MultiTypedObjectInterface::/percobj/logo
 
