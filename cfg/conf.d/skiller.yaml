@@ -32,10 +32,10 @@ skiller:
         obj_pose_2: Position3DInterface::/percobj/2
         obj_pose_3: Position3DInterface::/percobj/3
         obj_pose_4: Position3DInterface::/percobj/4
-        obj_pose_6: Position3DInterface::/percobj/5
-        obj_pose_7: Position3DInterface::/percobj/6
-        obj_pose_8: Position3DInterface::/percobj/7
-        obj_pose_5: Position3DInterface::/percobj/8
+        obj_pose_5: Position3DInterface::/percobj/5
+        obj_pose_6: Position3DInterface::/percobj/6
+        obj_pose_7: Position3DInterface::/percobj/7
+        obj_pose_8: Position3DInterface::/percobj/8
         obj_type_1: MultiTypedObjectInterface::/percobj/1
         obj_type_2: MultiTypedObjectInterface::/percobj/2
         obj_type_3: MultiTypedObjectInterface::/percobj/3
