@@ -23,8 +23,8 @@ module(..., skillenv.module_init)
 
 -- Crucial skill information
 name               = "perceive_objects"
-fsm                = SkillHSM:new{name=name, start="INIT", debug=true}
-depends_skills     = {"update_objects"}
+fsm                = SkillHSM:new{name=name, start="UPDATE_OBJECTS", debug=true}
+depends_skills     = {}
 depends_interfaces = {
    {v = "obj_type_1", type = "MultiTypedObjectInterface"},
    {v = "obj_type_2", type = "MultiTypedObjectInterface"},
@@ -43,9 +43,11 @@ depends_interfaces = {
    {v = "obj_pose_7", type = "Position3DInterface"},
    {v = "obj_pose_8", type = "Position3DInterface"}
 }
-depends_actions  = nil
+depends_actions  = {
+   {v = "update_objects", name="do_object_tracking", type="hybris_c1_msgs/DoObjectTracking"}
+}
 depends_topics   = {
-   {v="objects", name="perceived_tabletop_objects", type="hybris_c1_msgs/PerceivedObjects", latching=true}
+   --{v="objects", name="perceived_tabletop_objects", type="hybris_c1_msgs/PerceivedObjects", latching=true}
 }
 
 
@@ -60,7 +62,7 @@ local type_ifs = { obj_type_1, obj_type_2, obj_type_3, obj_type_4,
 local pose_ifs = { obj_pose_1, obj_pose_2, obj_pose_3, obj_pose_4,
 		   obj_pose_5, obj_pose_6, obj_pose_7, obj_pose_8 }
 
--- Jumpconditions
+-- Jump conditions
 
 
 -- States
@@ -68,36 +70,24 @@ fsm:define_states{
    export_to=_M,
    closure={objects=objects},
 
-   {"INIT", JumpState},
-   {"UPDATE_OBJECTS", SkillJumpState, skills={{update_objects}}, final_to="WAIT_MESSAGE", fail_to="FAILED"},
-   {"WAIT_MESSAGE", JumpState},
+   {"UPDATE_OBJECTS", ActionJumpState, action_client=update_objects, exit_to="PUBLISH", fail_to="FAILED"},
    {"PUBLISH", JumpState}
 }
 
 -- Transitions
 fsm:add_transitions{
-   {"INIT", "UPDATE_OBJECTS", cond="vars.update"},
-   {"INIT", "WAIT_MESSAGE", cond="not vars.update"},
-   {"WAIT_MESSAGE", "PUBLISH", cond="#objects.messages > 0"},
    {"PUBLISH", "FINAL", cond=true}
 }
 
-function WAIT_MESSAGE:init()
-   -- reset latching subscriber so we later retrieve the latest message
-   objects:reset_messages()
+function UPDATE_OBJECTS:exit()
+   if self:goal_handle():succeeded() then
+      self.fsm.vars.message = self:goal_handle().result.values.detections
+   end
 end
 
 function PUBLISH:init()
-   -- Should not happen, but just in case...
-   if #objects.messages == 0 then
-      -- Mark interfaces as object not visible
-      print_warn("No objects visible!?")
-      for i = 1, #pose_ifs do
-	 pose_ifs[i]:set_visibility_history(-1)
-      end
-   end
+   local m = self.fsm.vars.message
 
-   local m = objects.messages[1]
    if #m.values.objects > #type_ifs then
       print_warn("More than five objects received, will only add five")
    end
