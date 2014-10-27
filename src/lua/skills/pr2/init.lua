@@ -37,5 +37,6 @@ skillenv.use_skill("skills.generic.ppgoto")
 action_skill.use("pr2.planexec", "set_planning_goal", "continual_planning_server/PlanExec")
 action_skill.use("pr2.update_objects", "do_object_tracking", "hybris_c1_msgs/DoObjectTracking")
 --action_skill.use("pr2.get_new_sensor_data", "foo", "continual_planning_server/PlanExec")
+service_skill.use("pr2.reset_perception", "reset_perception_service", "hybris_c1_msgs/ResetPerceptionService")
 
 skillenv.use_skill("skills.pr2.perceive_objects")
