@@ -82,7 +82,7 @@ fsm:add_transitions{
    {"PUBLISH", "FINAL", cond=true}
 }
 
-function INIT:init()
+function WAIT_MESSAGE:init()
    -- reset latching subscriber so we later retrieve the latest message
    objects:reset_messages()
 end
@@ -91,7 +91,8 @@ function PUBLISH:init()
    -- Should not happen, but just in case...
    if #objects.messages == 0 then
       -- Mark interfaces as object not visible
-      for i = num_obj, #pose_ifs do
+      print_warn("No objects visible!?")
+      for i = 1, #pose_ifs do
 	 pose_ifs[i]:set_visibility_history(-1)
       end
    end
@@ -104,56 +105,71 @@ function PUBLISH:init()
    local num_obj = math.min(#m.values.objects, #type_ifs)
    local set_objs = {}
 
+   if self.fsm.debug then
+      print("Received message:")
+      m:print("  ")
+   end
+
    for i = 1, num_obj do
-      if self.fsm.debug then
-	 print("Received message:")
-	 m:print("  ")
+      local id    = m.values.objects[i].values.id
+      local types = m.values.objects[i].values.types
+      local frame = m.values.header.values.frame_id
+      -- With geometry_msgs/Point
+      local pos   = m.values.objects[i].values.centroid.values
+      local rot   = {x=0., y=0., z=0., w=1.}
+      -- If we were using geometry_msgs/Pose
+      --local pos   = m.values.objects[i].values.centroid.values.position.values
+      --local rot   = m.values.objects[i].values.centroid.values.orientation.values
+
+      if #types > 4 then
+	 print_warn("Object %d has more than 4 types: %s", i, tostring(types))
       end
-      if m.values.objects[i].values.active then
 
-	 local id    = m.values.objects[i].values.id
-	 local types = m.values.objects[i].values.types
-	 local frame = m.values.header.values.frame_id
-	 -- With geometry_msgs/Point
-	 local pos   = m.values.objects[i].values.centroid.values
-	 local rot   = {x=0., y=0., z=0., w=1.}
-	 -- If we were using geometry_msgs/Pose
-	 --local pos   = m.values.objects[i].values.centroid.values.position.values
-	 --local rot   = m.values.objects[i].values.centroid.values.orientation.values
-
-	 if #types > 4 then
-	    print_warn("Object %d has more than 4 types: %s", #types, tostring(types))
-	 end
-
-	 type_ifs[i]:set_obj_id(id)
-
-	 if #types > 0 then type_ifs[i]:set_type_1(types[1]) end
-	 if #types > 1 then type_ifs[i]:set_type_2(types[2]) end
-	 if #types > 2 then type_ifs[i]:set_type_3(types[3]) end
-	 if #types > 3 then type_ifs[i]:set_type_4(types[4]) end
-
-	 pose_ifs[i]:set_frame(frame)
-
-	 pose_ifs[i]:set_translation(0, pos.x)
-	 pose_ifs[i]:set_translation(1, pos.y)
-	 pose_ifs[i]:set_translation(2, pos.z)
-
-	 pose_ifs[i]:set_rotation(0, rot.x)
-	 pose_ifs[i]:set_rotation(1, rot.y)
-	 pose_ifs[i]:set_rotation(2, rot.z)
-	 pose_ifs[i]:set_rotation(3, rot.w)
-
-	 -- Just set to one, would need proper ID matching and since we
-	 -- expect this particular perception to be one-shot it wouldn't
-	 -- make much sense anyway
-	 pose_ifs[i]:set_visibility_history(1)
+      if id < 0 or id >= #pose_ifs then
+	 print_error("Object iD out of range, ignoring")
       else
-	 pose_ifs[i]:set_visibility_history(-1)
+	 -- object IDs are zero-based, arrays start with idx 1
+	 local idx = id + 1
+
+	 -- remember which objects we set
+	 set_objs[idx] = true
+
+	 type_ifs[idx]:set_obj_id(id)
+
+	 if #types > 0 then type_ifs[idx]:set_type_1(types[1]) end
+	 if #types > 1 then type_ifs[idx]:set_type_2(types[2]) end
+	 if #types > 2 then type_ifs[idx]:set_type_3(types[3]) end
+	 if #types > 3 then type_ifs[idx]:set_type_4(types[4]) end
+
+	 pose_ifs[idx]:set_frame(frame)
+
+	 pose_ifs[idx]:set_translation(0, pos.x)
+	 pose_ifs[idx]:set_translation(1, pos.y)
+	 pose_ifs[idx]:set_translation(2, pos.z)
+
+	 pose_ifs[idx]:set_rotation(0, rot.x)
+	 pose_ifs[idx]:set_rotation(1, rot.y)
+	 pose_ifs[idx]:set_rotation(2, rot.z)
+	 pose_ifs[idx]:set_rotation(3, rot.w)
+
+	 if m.values.objects[i].values.active then
+	    -- Just set to one, would need proper ID matching and since we
+	    -- expect this particular perception to be one-shot it wouldn't
+	    -- make much sense anyway
+	    printf("Object %d is active with types [%s]", id, table.concat(types, ", "))
+	    pose_ifs[idx]:set_visibility_history(1)
+	 else
+	    printf("Object %d is INactive with types [%s]", id, table.concat(types, ", "))
+	    pose_ifs[idx]:set_visibility_history(-1)
+	 end
       end
    end
 
    -- Mark remaining interfaces as object not visible
-   for i = num_obj + 1, #pose_ifs do
-      pose_ifs[i]:set_visibility_history(-1)
+   for i = 1, #pose_ifs do
+      if not set_objs[i] then
+	 printf("Object %d not (yet) seen", i)
+	 pose_ifs[i]:set_visibility_history(-1)
+      end
    end
 end
