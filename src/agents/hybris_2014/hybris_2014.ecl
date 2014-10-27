@@ -115,10 +115,10 @@ handle_update(update) :-
 
 handle_terminate(terminate) :-
     log_info("Event: TERMINATE"),
-    bb_send_message("SkillerInterface::Skiller", "ReleaseControlMessage", []) ; true,
+    (bb_send_message("SkillerInterface::Skiller", "ReleaseControlMessage", []) ; true),
     log_info("Released skiller control"),
-    asserta(terminate(1)),
-    yield("terminate", A).
+    asserta(terminate(1)).
+    %yield("terminate", A).
     %halt.
 
 %% setup event handlers
@@ -652,6 +652,8 @@ proc(next_action_deliver(N), and(object(N), obj_is_wanted(N))).
 
 proc(next_action_inspect(N), and(object(N), and(obj_is_box(N), neg(obj_inspected(N))))).
 
+proc(should_exit, terminate(1)).
+
 %proc(drive_to_place, [search(pi(n, [?(place(n)), drive_to(n)]))]).
 
 /* Main procedure running the agent.
@@ -664,7 +666,8 @@ proc(next_action_inspect(N), and(object(N), and(obj_is_box(N), neg(obj_inspected
 proc(control, prioritized_interrupts(
     [interrupt(up_to_date=false, update),
      interrupt(running, sleep),
-     
+     interrupt(should_exit, stop_interrupts),
+
      % put things to exec once initially here
      %interrupt(exec_once=true,
 	%[print("Executing perceive_objects"),
