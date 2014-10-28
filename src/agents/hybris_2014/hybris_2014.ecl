@@ -132,7 +132,9 @@ open_object_interfaces :-
       \+ (concat_string(["/percobj/", N], Id),
 	  log_info("Opening interfaces Position3DInterface|MultiTypedObjectInterface::%s", [Id]),
 	  bb_open_interface_reading("Position3DInterface", Id),
-	  bb_open_interface_reading("MultiTypedObjectInterface", Id))).
+	  bb_open_interface_reading("MultiTypedObjectInterface", Id))),
+  bb_open_interface_reading("MultiTypedObjectInterface", "/percobj/logo").
+
 
 close_object_interfaces :-
   max_num_objects(M),
@@ -142,7 +144,8 @@ close_object_interfaces :-
 	  log_info("Closing interface %s", [PosId]),
 	  bb_close_interface(PosId),
 	  log_info("Closing interface %s", [MultiId]),
-	  bb_close_interface(MultiId))).
+	  bb_close_interface(MultiId))),
+  bb_close_interface("MultiTypedObjectInterface::/percobj/logo").
   
 
 %% initialisation and finalisation - only open all interfaces when on host caesar
@@ -418,28 +421,25 @@ execute(drive_to(Node), Sr) :-
 
 execute(perceive_objects, false) :- 
     log_info("Executing: perceive_objects"),
-    %exec_skill_wait("perceive_objects", "update=false"),
-    log_warn("PERCEPTION commencing"),
-    exec_skill_wait("perceive_objects", "update=true"),
-    log_error("PERCEPTION run completed"),
+    exec_skill_wait("perceive_objects", ""),
     % fake a wanted object
-    %(object_visible(1, false), !, log_warn("Setting object to visible"),
-    % retract(object_visible(1, _)), assert(object_visible(1, true)),
-    % retract(object_inspected(1, _)), assert(object_inspected(1, true)),
-    % retract(object_types(1, _)), assert(object_types(1, ["box"]))
-    % ;
-    % log_info("Object already visible")
-    %).
+    %(object_visible(1, false)
+    % -> log_warn("Setting object to visible"),
+	%retract(object_visible(1, _)), assert(object_visible(1, true)),
+	%%retract(object_inspected(1, _)), assert(object_inspected(1, true)),
+	%retract(object_types(1, _)), assert(object_types(1, ["box"]))
+     %;
+     %log_info("Object already visible")
+    %),
     ( success, !, Sr=true, log_info("Perceiving objects succeeded"), update_objects_data
       ;
       failed, !, Sr=false, log_info("Perceiving objects failed")
     ).
 
-execute(deliver_object(N), false) :-
-  log_info("Delivering object %d", [N]),
-  %concat_string(["goal=\"(at-base ", Node, ")\", use_env_server=true"], Arg),
-  %exec_skill("planexec", Arg),
-  sleep(1.0),
+execute(deliver_object(N, Where), false) :-
+  log_info("Delivering object %d to %s", [N, Where]),
+  concat_string(["goal=\"(on obj_", N, " ", Where, ")\", use_env_server=true"], Arg),
+  exec_skill_wait("planexec", Arg),
   retract(object_visible(N, _)), assert(object_visible(N, false)),
   retract(object_visible_processed(N, _)), assert(object_visible_processed(N, false)),
   retract(object_inspected(N, _)), assert(object_inspected(N, false)),
@@ -452,21 +452,41 @@ execute(deliver_object(N), false) :-
   %  failed, !, Sr=""
   %).
 
-execute(inspect_object(N), false) :-
+execute(pickup_object(N), false) :-
+  log_info("Picking up object %d", [N]),
+  concat_string(["goal=\"(inspectable obj_", N, ")\", use_env_server=true"], Arg),
+  exec_skill_wait("planexec", Arg),
+  ( success, !, log_info("Picking up %d succeeded", [N])
+    ;
+    failed, !, log_warn("Picking up %d failed", [N])
+  ).
+
+execute(inspect_object(N), Sr) :-
   log_info("Inspecting object %d", [N]),
-  %concat_string(["goal=\"(at-base ", Node, ")\", use_env_server=true"], Arg),
-  %exec_skill("planexec", Arg),
-  sleep(0.1),
+  exec_skill_wait("inspect_logo", ""),
   retract(object_inspected(N, _)), assert(object_inspected(N, true)),
   retract(object_inspected_processed(N, _)), assert(object_inspected_processed(N, false)),
   %retract(object_types(N, _)), assert(object_types(N, ["box", "chocolate"])),
   %retract(object_types_processed(N, _)), assert(object_types_processed(N, true)),
-  object_types(N, T), join_string(T, " ", S), log_info("Types now: %s", [S]).
-  %wait_for_skiller,
-  %( success, !, Sr=Node
-  %  ;
-  %  failed, !, Sr=""
-  %).
+  object_types(N, T), join_string(T, " ", S), log_info("Types now: %s", [S]),
+  ( success, !,
+    bb_read_interface("MultiTypedObjectInterface::/percobj/logo"),
+    bb_get("MultiTypedObjectInterface::/percobj/logo", "type_1", LogoType),
+    log_info("Read logo type %s", [LogoType]),
+    retract(object_types(N, _)), assert(object_types(N, [LogoType|T])),
+    Sr=LogoType
+    ;
+    failed, !, Sr=""
+  ).
+
+execute(putdown_object(N, Where), false) :-
+  log_info("Placing object %d at %s", [N, Where]),
+  concat_string(["goal=\"(on obj_", N, " ", Where, ")\", use_env_server=true"], Arg),
+  exec_skill_wait("planexec", Arg),
+  ( success, !, log_info("Putting down %d at %s succeeded", [N, Where])
+    ;
+    failed, !, log_warn("Putting down %d at %s failed", [N, Where])
+  ).
 
 execute(sleep, false) :- log_debug("Executing: sleep"), sleep(0.5).
 
@@ -495,7 +515,21 @@ execute(send_switch_msg(Iface, Msg), false) :-
 :- endif.
 
 
-execute(end_of_run, false) :- log_info("One run completed!").
+execute(reset_scene, false) :-
+  % reset all current knowledge about objects
+  \+ (object(N),
+      \+ (log_info("Resetting object %d", N),
+	  retract(object_visible(N, _)), assert(object_visible(N, false)),
+	  retract(object_visible_processed(N, _)), assert(object_visible_processed(N, false)),
+	  retract(object_inspected(N, _)), assert(object_inspected(N, false)),
+	  retract(object_inspected_processed(N, _)), assert(object_inspected_processed(N, false)),
+	  retract(object_types(N, _)), assert(object_types(N, [])),
+	  retract(object_types_processed(N, _)), assert(object_types_processed(N, false))
+     )),
+  log_info("Calling reset_perception skill"),
+  exec_skill_wait("reset_perception", ""),
+  log_info("*** RESET COMPLETED ***").
+
 
 execute(set_verbose(Mode), false) :-
     log_info("Setting verbose_mode to %w", [Mode]),
@@ -558,17 +592,19 @@ prim_action(update).
 prim_action(change_fluent(Fluent, Value)).
 prim_action(wait_for_skiller).
 prim_action(send_switch_msg(Iface, Msg)).
-prim_action(end_of_run).
 prim_action(set_verbose(Mode)).
 %prim_action(grab_box).
-prim_action(deliver_object(N)) :- object(N).
+prim_action(reset_scene).
+prim_action(deliver_object(N, Where)) :- object(N).
 prim_action(inspect_object(N)) :- object(N).
+prim_action(pickup_object(N)) :- object(N).
+prim_action(putdown_object(N, Where)) :- object(N).
 
 
 %% fluents
 prim_fluent(at).
 prim_fluent(skiller_status).
-prim_fluent(holding_box).
+prim_fluent(holding).
 prim_fluent(ignore_status).
 prim_fluent(up_to_date).
 prim_fluent(intro).
@@ -597,25 +633,30 @@ causes_val(change_fluent(Fluent, Value), Fluent, Value, true).
 
 %causes_val(drive_to(_), detected_box, false, true).
 %causes_val(drive_to(_), close_to_table, false, true).
-%causes_val(drive_to(_), rotatation_reached, false, true).
+causes_val(drive_to(N), place_visited(N), true, true).
 
 causes_val(req_update, up_to_date, false, true).
 causes_val(update, up_to_date, true, true).
 
-causes_val(end_of_run, num_runs, N, N is num_runs+1  ).
+causes_val(reset_scene, num_runs, N, N is num_runs+1  ).
+causes_val(reset_scene, reset_places, true, true).
 
 % skiller status should be ignored for the first action after a restart
 causes_val(restart, ignore_status, true, true).
 causes_val(drive_to(N), ignore_status, false, true).
 %causes_val(grab_box, ignore_status, false, true).
-causes_val(deliver_object(N), obj_is_wanted(N), false, true).
-causes_val(deliver_object(N), obj_is_box(N), false, true).
-causes_val(deliver_object(N), obj_inspected(N), false, true).
+causes_val(deliver_object(N, Where), obj_is_wanted(N), false, true).
+causes_val(deliver_object(N, Where), obj_is_box(N), false, true).
+causes_val(deliver_object(N, Where), obj_inspected(N), false, true).
 causes_val(inspect_object(N), obj_inspected(N), true, true).
 
 causes_val(object_seen(N),   obj_exists(N), true, true).
 causes_val(object_is_box(N), obj_is_box(N), true, true).
 causes_val(object_is_wanted(N), obj_is_wanted(N), true, true).
+
+causes_val(putdown_object(N, Where), holding, false, true).
+causes_val(pickup_object(N), holding, N, true).
+
 
 %% preconditions
 % currently most actions are just possible, preconditions are
@@ -631,17 +672,20 @@ poss(wait_for_skiller, true).
 poss(send_switch_msg(I,M), true).
 %poss(grab_box, and(executable, holding_box=false)).
 poss(set_verbose(Mode), true).
-poss(end_of_run, true).
 poss(perceive_objects, true).
-poss(deliver_object(N), and(object(N), obj_is_wanted(N))).
-poss(inspect_object(N), and(object(N), obj_is_box(N))).
+poss(deliver_object(N, Where), and(object(N), obj_is_wanted(N))).
+poss(inspect_object(N), and(holding=N, and(object(N), obj_is_box(N)))).
+poss(pickup_object(N), and(holding=false, and(object(N), obj_is_box(N)))).
+poss(putdown_object(N, Where), and(holding=N, and(object(N), obj_is_box(N)))).
+
+poss(reset_scene, true).
 
 poss(update, true).
 poss(restart, true).
 
 %% initial state
 initially(at, "start").
-initially(holding_box, false).
+initially(holding, false).
 initially(ignore_status, false).
 initially(intro, false).
 initially(num_runs, 1).
@@ -668,7 +712,7 @@ proc(executable, or(inactive, or(final, ignore_status=true)) ).
 proc(at_place(N), and(at=N, place(N))).
 proc(not_at_place(N), and(neg(at=N), place(N))).
 
-proc(next_action_goto_counter, and(at_place("start"), and(executable, holding_box=false))).
+proc(next_action_goto_counter, and(at_place("start"), and(executable, holding=false))).
 
 proc(next_action_explore(N), and(at_place(N), neg(place_explored(N)))).
 
@@ -676,7 +720,8 @@ proc(next_action_move_on(N), and(place(N), neg(place_visited(N)))).
 
 proc(next_action_reset_place(N), and(reset_places=true, and(place(N), and(place_visited(N)=true, place_explored(N)=true)))).
 
-proc(next_action_deliver(N), and(object(N), obj_is_wanted(N))).
+proc(next_action_deliver(N), and(object(N), and(obj_is_wanted(N), holding=N))).
+proc(next_action_putback(N), and(object(N), and(neg(obj_is_wanted(N)), and(obj_inspected(N), holding=N)))).
 
 proc(next_action_inspect(N), and(object(N), and(obj_is_box(N), neg(obj_inspected(N))))).
 
@@ -710,7 +755,7 @@ proc(control, prioritized_interrupts(
 		change_fluent(place_visited(n), false), change_fluent(place_explored(n), false)]),
 
      % for testing, stop after single cycle
-     interrupt(reset_places=true, [sleep]),
+     %interrupt(reset_places=true, [sleep]),
 
      interrupt(reset_places=true,
 	       [print("Resetting places done"),
@@ -732,11 +777,15 @@ proc(control, prioritized_interrupts(
      
      interrupt(n, next_action_deliver(n),
 	       [print_var("FOUND wanted object %d", n),
-		deliver_object(n)]),
+		deliver_object(n, "table2")]),
+
+     interrupt(n, next_action_putback(n),
+	       [print_var("Placing back unwanted object %d", n),
+		putdown_object(n, "table1")]),
 
      interrupt(n, next_action_inspect(n),
-	       [print_var("Inspecting %d", n),
-		inspect_object(n)]),
+	       [print_var("Picking up and inspecting %d", n),
+		pickup_object(n), inspect_object(n)]),
 
      %interrupt(next_action_goto_counter,
 	%       [print("Moving to start position"),
@@ -753,7 +802,6 @@ proc(control, prioritized_interrupts(
      % closer inspection, yet.
      interrupt(n2, next_action_move_on(n2),
 	       [print_var("Moving on to %s", n2),
-		change_fluent(place_visited(n2), true),
 		drive_to(n2)]),
 
      % fail, cannot find object
@@ -776,8 +824,8 @@ proc(control, prioritized_interrupts(
 %	       [generate_goal_deliver(ObjID, Goal), plan_exec(Goal)]),
 
      interrupt(true,
-	       [print("***** Run completed, resetting places *****"),
-		change_fluent(reset_places, true)]),
+	       [print("***** Run completed, resetting scene *****"),
+		reset_scene]),
 
      interrupt(true, sleep)
     ])).
