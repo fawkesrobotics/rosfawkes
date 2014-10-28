@@ -331,19 +331,34 @@ wait_for_skiller(MsgId) :-
   bb_get("SkillerInterface::Skiller", "status", Status),
   not_running(Status).
 
-success :- bb_get("SkillerInterface::Skiller", "status", Status), is_final(Status).
-failed :-  bb_get("SkillerInterface::Skiller", "status", Status), is_failed(Status).
-
 decide_on_sensing(true) :- success.
 decide_on_sensing(false) :- failed.
 
 inverse_decide(false) :- success.
 inverse_decide(true) :- failed.
 
+% Set to not actually call skills but simulate them
+:- assert(fake_skills).
+
+:- if(fake_skills).
+:- print("FAKING SKILLS").
+success :- true.
+failed  :- fail.
+
+exec_skill_wait(Skill, Arguments) :-
+  log_info("Faking execution of --- %s{%s} ---", [Skill, Arguments]),
+  sleep(1.0).
+
+:- else.
+:- print("NOT FAKING SKILLS").
+success :- bb_get("SkillerInterface::Skiller", "status", Status), is_final(Status).
+failed  :- bb_get("SkillerInterface::Skiller", "status", Status), is_failed(Status).
+
 %% auxiliary predicates to execute skills
 exec_skill_wait(Skill, Arguments) :-
   exec_skill(Skill, Arguments, MsgId),
   wait_for_skiller(MsgId).
+:- endif.
 
 exec_skill(Skill, Arguments) :-
   exec_skill(Skill, Arguments, _).
