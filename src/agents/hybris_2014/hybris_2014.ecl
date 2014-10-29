@@ -629,7 +629,7 @@ execute(inspect_object(N), Sr) :-
 execute(putdown_object(N, Where), false) :-
   object_to_planner(N, NP),
   log_info("Placing object %d (planner %d) at %s", [N, NP, Where]),
-  concat_string(["goal=\"(on obj_", NP, " ", Where, ")\", use_env_server=true"], Arg),
+  concat_string(["goal=\"(and (on obj_", NP, " ", Where, ") (searched ", Where, "))\", use_env_server=true"], Arg),
   exec_skill_wait("planexec", Arg),
   ( success, !, log_info("Putting down %d at %s succeeded", [N, Where])
     ;
