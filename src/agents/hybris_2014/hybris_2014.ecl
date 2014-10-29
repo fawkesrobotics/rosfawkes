@@ -420,10 +420,10 @@ inverse_decide(false) :- success.
 inverse_decide(true) :- failed.
 
 % Set to not actually call skills but simulate them
-:- assert(fake_skills).
+%:- assert(fake_skills).
 
 :- if(fake_skills).
-:- print("FAKING SKILLS").
+?- log_warn("FAKING SKILLS").
 success :- true.
 failed  :- fail.
 
@@ -432,12 +432,13 @@ exec_skill_wait(Skill, Arguments) :-
   sleep(1.0).
 
 :- else.
-:- print("NOT FAKING SKILLS").
+:- print("NOT FAKING SKILLS\n").
 success :- bb_get("SkillerInterface::Skiller", "status", Status), is_final(Status).
 failed  :- bb_get("SkillerInterface::Skiller", "status", Status), is_failed(Status).
 
 %% auxiliary predicates to execute skills
 exec_skill_wait(Skill, Arguments) :-
+  log_info("Executing --- %s{%s} ---", [Skill, Arguments]),
   exec_skill(Skill, Arguments, MsgId),
   wait_for_skiller(MsgId).
 :- endif.
@@ -492,7 +493,7 @@ execute(drive_to(Node), Sr) :-
     log_warn("Drive to %s", [Node]),
     exec_skill_wait("planexec", Arg),
     log_error("DRIVE completed"),
-    sleep(0.5),
+    sleep(0.1),
     ( success, !, Sr=Node
       ;
       failed, !, Sr=""
@@ -525,18 +526,27 @@ execute(drive_to(Node), Sr) :-
 execute(perceive_objects, false) :- 
     log_info("Executing: perceive_objects"),
     exec_skill_wait("perceive_objects", ""),
+    log_info("perceive_objects finished executing"),
     % fake a wanted object
-    %(object_visible(1, false)
-    % -> log_warn("Setting object to visible"),
-	%retract(object_visible(1, _)), assert(object_visible(1, true)),
-	%%retract(object_inspected(1, _)), assert(object_inspected(1, true)),
-	%retract(object_types(1, _)), assert(object_types(1, ["box"]))
-     %;
-     %log_info("Object already visible")
-    %),
+    %% (object_visible(1, false)
+    %%  -> log_warn("Setting object 1 to visible"),
+    %% 	retract(object_visible(1, _)), assert(object_visible(1, true)),
+    %% 	%retract(object_inspected(1, _)), assert(object_inspected(1, true)),
+    %% 	retract(object_types(1, _)), assert(object_types(1, ["box"]))
+    %%  ;
+    %%  log_info("Object 1 already visible")
+    %% ),
+    %% (object_visible(2, false)
+    %%  -> log_warn("Setting object 2 to visible"),
+    %% 	retract(object_visible(2, _)), assert(object_visible(2, true)),
+    %% 	%retract(object_inspected(2, _)), assert(object_inspected(2, true)),
+    %% 	retract(object_types(2, _)), assert(object_types(2, ["box"]))
+    %%  ;
+    %%  log_info("Object 2 already visible")
+    %% ),
     ( success, !, Sr=true, log_info("Perceiving objects succeeded"), update_objects_data
       ;
-      failed, !, Sr=false, log_info("Perceiving objects failed")
+      failed, !, Sr=false, log_warn("Perceiving objects failed")
     ).
 
 :- endif.
@@ -551,7 +561,7 @@ execute(deliver_object(N, Where), false) :-
   retract(object_inspected(N, _)), assert(object_inspected(N, false)),
   retract(object_inspected_processed(N, _)), assert(object_inspected_processed(N, false)),
   retract(object_types(N, _)), assert(object_types(N, [])),
-  retract(object_types_processed(N, _)), assert(object_types_processed(N, false)).
+  retract(object_types_processed(N, _)), assert(object_types_processed(N, false)),
   %wait_for_skiller,
   ( success, !, Sr=N
     ;
@@ -601,11 +611,13 @@ execute(inspect_object(N), Sr) :-
   retract(object_inspected_processed(N, _)), assert(object_inspected_processed(N, false)),
   %retract(object_types(N, _)), assert(object_types(N, ["box", "chocolate"])),
   %retract(object_types_processed(N, _)), assert(object_types_processed(N, true)),
-  object_types(N, T), join_string(T, " ", S), log_info("Types now: %s", [S]),
+  object_types(N, T), join_string(T, " ", S), log_info("Types unmodified: %s", [S]),
   ( success, !,
     bb_read_interface("MultiTypedObjectInterface::/percobj/logo"),
     bb_get("MultiTypedObjectInterface::/percobj/logo", "type_1", LogoType),
+    %LogoType="chocolate",
     log_info("Read logo type %s", [LogoType]),
+    join_string([LogoType|T], " ", SM), log_info("Types now: %s", [SM]),
     retract(object_types(N, _)), assert(object_types(N, [LogoType|T])),
     Sr=LogoType
     ;
@@ -683,7 +695,7 @@ execute(stop_interrupts, false) :- true.
 
 :- if(\+ debug_true).
 execute(A,_) :- (\+ senses(A, _), term_string(A, S),
-		 log_error("Action %s does not have an execute function", [S])) ; true.
+		 log_error("Action %s does not have an execute function or failed", [S])) ; true.
 :- endif.
 
 %% exogenous actions
