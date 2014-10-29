@@ -30,7 +30,43 @@
 :- use_module(filepath).
 :- use_module(library(util)).
 
+:- setval(use_esl, false).
+
+:- if(getval(use_esl, true)).
+  % Declare operators for ESL formulas:
+  % (Hopefully there is no conflict with some code that expects different
+  % operator precedence.)
+  :- op(820, fx, ~).    /* Negation */
+  :- op(840, xfy, ^).   /* Conjunction */
+  :- op(850, xfy, v).   /* Disjunction */
+  :- op(870, xfy, ->).  /* Implication */
+  :- op(880, xfy, <->). /* Equivalence */
+  :- op(890, xfy, =>).  /* Belief conditional */
+  % Load the BAT shared library:
+  :- load('/u/hybrisc1/esbl/bats/libBAT-kitchen.so').
+  % Load the ESBL interface:
+  :- load('/u/hybrisc1/esbl/eclipse-clp/libEclipseESBL.so').
+  :- external(kcontext/1, p_kcontext).
+  :- external(bcontext/2, p_bcontext).
+  :- external(context_store/2, p_context_store).
+  :- external(context_retrieve/2, p_context_retrieve).
+  :- external(context_guarantee_consistency/2, p_context_guarantee_consistency).
+  :- external(context_exec/3, p_context_exec).
+  :- external(context_assert/2, p_context_assert).
+  :- external(context_entails/3, p_context_entails).
+  % Simple wrapper predicates:
+  esl_reset :- kcontext(Ctx), context_store(eslctx, Ctx).
+  esl_assert(Phi) :- context_retrieve(eslctx, Ctx), context_assert(Ctx, Phi).
+  esl_holds(K, Phi) :- context_retrieve(eslctx, Ctx), context_entails(Ctx, K, Phi).
+  % Conversions Prolog to ESL:
+  object_to_stdname(N, StdName) :- concat_atom(['o', N], StdName).
+  boxtype_to_stdname(T, StdName) :- atom_string(StdName, T).
+  % Initialize a context to start with:
+  :- esl_reset.
+:- endif.
+
 :- include("indigolog-esl").
+
 % This doesn't work and we do not have a proper solution at this time
 %?- locate_file("indigolog-esl.ecl", F), include(F).
 ?- locate_module("blackboard", F), use_module(F).
@@ -223,6 +259,46 @@ define_locations([[Node|_]|Tail]) :- assert(place(Node)), define_locations(Tail)
 define_places([]).
 define_places([[Node|_]|Tail]) :- assert(place(Node)), log_info("Defining %w to be a place", [Node]), define_places(Tail).
 
+:- if(getval(use_esl, true)).
+
+update_objects_data :-
+  log_info("Processing blackboard data, ESL version"),
+  % iterate over all objects, use pattern \+ (generator(N), \+ process(N))
+  \+ (object(N),
+      log_info("Processing object interface %d", [N]),
+      \+ (interface_changed(N)  % the interface has changed, therefore process it
+	  -> (interface_object_visible(N)
+	      -> log_info("Object %d is VISIBLE", [N]),
+                 %retract(object_visible(N, _)), assert(object_visible(N, true)),
+                 object_to_stdname(N, N_StdName),
+                 esl_assert(object_visible(N_StdName)),
+		 get_multitypes(N, T), object_types(N, OldT),
+		 intersection(T, OldT, CommonT), length(CommonT, LCommonT), length(T, LT), length(OldT, LOldT),
+		 join_string(T, " ", ST), join_string(OldT, " ", SOldT),
+		 log_info("Object %d old types: %s  new types: %s", [N, SOldT, ST]),
+		 ( (LCommonT =\= LT ; LCommonT =\= LOldT)
+		   -> %retract(object_types(N, _)), assert(object_types(N, T)),
+                      ( member("box", T) ->
+                          %esl_assert(exists(t, box_type(t) ^ object_type(N_StdName, t)))
+                          esl_assert(object_type(N_StdName, biscuit) v object_type(N_StdName, chocolate) v object_type(N_StdName, dummy))
+                      ;
+                          %esl_assert(forall(t, box_type(t) -> ~object_type(N_StdName, t)))
+                          esl_assert(~object_type(N_StdName, biscuit) ^ ~object_type(N_StdName, chocolate) ^ ~object_type(N_StdName, dummy))
+                      ),
+		      retract(object_types_processed(N, _)), assert(object_types_processed(N, false))
+		   ; true
+		 )
+	      ;
+              %retract(object_visible(N, _)), assert(object_visible(N, false))
+              true
+	     ),
+	     retract(object_visible_processed(N, _)), assert(object_visible_processed(N, false))
+	  ; true
+	 )
+     ).
+
+:- else.
+
 % Possible types for object 1,2,... are stored in Types1,Types2,...
 % If the visibility history is less or equal to zero, an empty list is stored in the according variable
 update_objects_data :-
@@ -250,6 +326,8 @@ update_objects_data :-
 	  ; true
 	 )
      ).
+
+:- endif.
 
 interface_object_visible(N) :-
   concat_string(["Position3DInterface::/percobj/", N], Interface),
@@ -419,6 +497,30 @@ execute(drive_to(Node), Sr) :-
       failed, !, Sr=""
     ).
 
+:- if(getval(use_esl, true)).
+
+%% execute(perceive_objects, false) :- 
+%%     log_info("Executing: perceive_objects"),
+%%     exec_skill_wait("perceive_objects", ""),
+%%     % fake a wanted object
+%%     (object_visible(1, false)
+%%      -> log_warn("Setting object to visible"),
+%% 	%retract(object_visible(1, _)), assert(object_visible(1, true)),
+%% 	esl_assert(object_visible(o1)),
+%% 	%%retract(object_inspected(1, _)), assert(object_inspected(1, true)),
+%% 	%retract(object_types(1, _)), assert(object_types(1, ["box"]))
+%%         %esl_assert(exists(t, box_type(t) ^ object_type(o1, t)))
+%%         esl_assert(object_type(o1, biscuit) v object_type(o1, chocolate) v object_type(o1, dummy))
+%%      ;
+%%      log_info("Object already visible")
+%%     ),
+%%     ( success, !, Sr=true, log_info("Perceiving objects succeeded")%, update_objects_data
+%%       ;
+%%       failed, !, Sr=false, log_info("Perceiving objects failed")
+%%     ).
+
+:- else.
+
 execute(perceive_objects, false) :- 
     log_info("Executing: perceive_objects"),
     exec_skill_wait("perceive_objects", ""),
@@ -435,6 +537,8 @@ execute(perceive_objects, false) :-
       ;
       failed, !, Sr=false, log_info("Perceiving objects failed")
     ).
+
+:- endif.
 
 execute(deliver_object(N, Where), false) :-
   log_info("Delivering object %d to %s", [N, Where]),
@@ -461,6 +565,32 @@ execute(pickup_object(N), false) :-
     failed, !, log_warn("Picking up %d failed", [N])
   ).
 
+:- if(getval(use_esl, true)).
+
+execute(inspect_object(N), Sr) :-
+  log_info("Inspecting object %d", [N]),
+  exec_skill_wait("inspect_logo", ""),
+  object_to_stdname(N, N_StdName),
+  %retract(object_inspected(N, _)), assert(object_inspected(N, true)),
+  retract(object_inspected_processed(N, _)), assert(object_inspected_processed(N, false)),
+  %retract(object_types(N, _)), assert(object_types(N, ["box", "chocolate"])),
+  %retract(object_types_processed(N, _)), assert(object_types_processed(N, true)),
+  %object_types(N, T), join_string(T, " ", S), log_info("Types now: %s", [S]),
+  ( success, !,
+    bb_read_interface("MultiTypedObjectInterface::/percobj/logo"),
+    bb_get("MultiTypedObjectInterface::/percobj/logo", "type_1", LogoType),
+    log_info("Read logo type '%s'", [LogoType]),
+    %retract(object_types(N, _)), assert(object_types(N, [LogoType|T])),
+    boxtype_to_stdname(LogoType, LogoType_StdName),
+    esl_assert(object_type(N_StdName, LogoType_StdName)),
+    Sr=LogoType
+    ;
+    failed, !, Sr="",
+    esl_assert(~object_type(N_StdName, biscuit) ^ ~object_type(N_StdName, chocolate))
+  ).
+
+:- else.
+
 execute(inspect_object(N), Sr) :-
   log_info("Inspecting object %d", [N]),
   exec_skill_wait("inspect_logo", ""),
@@ -478,6 +608,8 @@ execute(inspect_object(N), Sr) :-
     ;
     failed, !, Sr=""
   ).
+
+:- endif.
 
 execute(putdown_object(N, Where), false) :-
   log_info("Placing object %d at %s", [N, Where]),

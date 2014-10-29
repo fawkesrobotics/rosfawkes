@@ -226,7 +226,9 @@ expand_interrupts([X|L],pconc(X,E)) :- expand_interrupts(L,E).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % holds(P,H): formula P is true at history H
 
-holds(esl(K, Phi),H) :- !, context_retrieve(Ctx), context_entails(Ctx, K, Phi).
+:- if(getval(use_esl, true)).
+holds(esl(K, Phi),H) :- !, esl_holds(K, Phi).
+:- endif.
 holds(and(P1,P2),H) :- !, holds(P1,H), holds(P2,H).
 holds(or(P1,P2),H) :- !, (holds(P1,H) ; holds(P2,H)).
 holds(neg(P),H) :- !, \+ holds(P,H).   /* Negation by failure */
