@@ -141,7 +141,7 @@ debug_true :- fail.
 
 :- log_info("Loading hybris_2014 IndiGolog agent").
 
-max_num_objects(8).
+max_num_objects(20).
 max_num_places(4).
 
 %% event handlers
@@ -390,6 +390,7 @@ object(N) :- max_num_objects(M), !, between(1, M, N).
 ?- \+ (object(N), \+ assert(object_inspected(N, false))).
 ?- \+ (object(N), \+ assert(object_inspected_processed(N, false))).
 
+object_to_planner(N, M) :- M is N - 1.
 
 %% auxiliary predicates to handle skiller status
 is_running("S_RUNNING").
@@ -541,8 +542,9 @@ execute(perceive_objects, false) :-
 :- endif.
 
 execute(deliver_object(N, Where), false) :-
-  log_info("Delivering object %d to %s", [N, Where]),
-  concat_string(["goal=\"(on obj_", N, " ", Where, ")\", use_env_server=true"], Arg),
+  object_to_planner(N, NP),
+  log_info("Delivering object %d (planner: %d) to %s", [N, NP, Where]),
+  concat_string(["goal=\"(on obj_", NP, " ", Where, ")\", use_env_server=true"], Arg),
   exec_skill_wait("planexec", Arg),
   retract(object_visible(N, _)), assert(object_visible(N, false)),
   retract(object_visible_processed(N, _)), assert(object_visible_processed(N, false)),
@@ -551,18 +553,19 @@ execute(deliver_object(N, Where), false) :-
   retract(object_types(N, _)), assert(object_types(N, [])),
   retract(object_types_processed(N, _)), assert(object_types_processed(N, false)).
   %wait_for_skiller,
-  %( success, !, Sr=Node
-  %  ;
-  %  failed, !, Sr=""
-  %).
-
-execute(pickup_object(N), false) :-
-  log_info("Picking up object %d", [N]),
-  concat_string(["goal=\"(inspectable obj_", N, ")\", use_env_server=true"], Arg),
-  exec_skill_wait("planexec", Arg),
-  ( success, !, log_info("Picking up %d succeeded", [N])
+  ( success, !, Sr=N
     ;
-    failed, !, log_warn("Picking up %d failed", [N])
+    failed, !, Sr=""
+  ).
+
+execute(pickup_object(N), Sr) :-
+  object_to_planner(N, NP),
+  log_info("Picking up object %d (planner: %d)", [N, NP]),
+  concat_string(["goal=\"(object-inspectable obj_", NP, ")\", use_env_server=true"], Arg),
+  exec_skill_wait("planexec", Arg),
+  ( success, !, Sr=N, log_info("Picking up %d succeeded", [N])
+    ;
+    failed, !, Sr=false, log_warn("Picking up %d failed", [N])
   ).
 
 :- if(getval(use_esl, true)).
@@ -612,8 +615,9 @@ execute(inspect_object(N), Sr) :-
 :- endif.
 
 execute(putdown_object(N, Where), false) :-
-  log_info("Placing object %d at %s", [N, Where]),
-  concat_string(["goal=\"(on obj_", N, " ", Where, ")\", use_env_server=true"], Arg),
+  object_to_planner(N, NP),
+  log_info("Placing object %d (planner %d) at %s", [N, NP, Where]),
+  concat_string(["goal=\"(on obj_", NP, " ", Where, ")\", use_env_server=true"], Arg),
   exec_skill_wait("planexec", Arg),
   ( success, !, log_info("Putting down %d at %s succeeded", [N, Where])
     ;
