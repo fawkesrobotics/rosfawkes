@@ -676,6 +676,7 @@ execute(reset_scene, false) :-
      )),
   log_info("Calling reset_perception skill"),
   exec_skill_wait("reset_perception", ""),
+  log_info("Will reset fluents on reset completion"),
   log_info("*** RESET COMPLETED ***").
 
 
@@ -791,6 +792,14 @@ causes_val(update, up_to_date, true, true).
 
 causes_val(reset_scene, num_runs, N, N is num_runs+1  ).
 causes_val(reset_scene, reset_places, true, true).
+causes_val(reset_scene, obj_exists(N), false, true) :- object(N).
+causes_val(reset_scene, obj_is_box(N), false, true) :- object(N).
+causes_val(reset_scene, obj_inspected(N, Where), false, true) :- object(N), place(Where).
+causes_val(reset_scene, obj_pickedup(N), false, true) :- object(N).
+causes_val(reset_scene, obj_is_wanted(N), false, true) :- object(N).
+causes_val(reset_scene, obj_delivered(N), false, true) :- object(N).
+causes_val(reset_scene, place_visited(N), false, true) :- place(N).
+causes_val(reset_scene, place_explored(N), false, true) :- place(N).
 
 % skiller status should be ignored for the first action after a restart
 causes_val(restart, ignore_status, true, true).
@@ -897,10 +906,9 @@ proc(control, prioritized_interrupts(
      interrupt(should_exit, stop_interrupts),
 
      % put things to exec once initially here
-     %interrupt(exec_once=true,
-	%[print("Executing perceive_objects"),
-	% perceive_objects,
-	% change_fluent(exec_once,false)]),
+     interrupt(exec_once=true,
+	       [print("***** Agent startup, resetting scene *****"),
+		reset_scene, change_fluent(exec_once,false)]),
 
      interrupt(and(neg(verbose_mode(mute)), num_runs=2), set_verbose(mute)),
 
@@ -908,16 +916,16 @@ proc(control, prioritized_interrupts(
 	       [print("Object delivered, I'm done."), sleep(5.0)]),
 
      %% Resetting of places after a run
-     interrupt(n, next_action_reset_place(n),
-	       [print_var("Resetting place %s", n),
-		change_fluent(place_visited(n), false), change_fluent(place_explored(n), false)]),
+     %interrupt(n, next_action_reset_place(n),
+	%       [print_var("Resetting place %s", n),
+	%	change_fluent(place_visited(n), false), change_fluent(place_explored(n), false)]),
 
      % for testing, stop after single cycle
      %interrupt(reset_places=true, [sleep]),
 
-     interrupt(reset_places=true,
-	       [print("Resetting places done"),
-		change_fluent(reset_places, false), change_fluent(at, "start")]),
+     %interrupt(reset_places=true,
+%	       [print("Resetting places done"),
+%		change_fluent(reset_places, false), change_fluent(at, "start")]),
 
      % if an action failed, ignore the status of the skiller and retry
      interrupt(and(failed, ignore_status=false), restart),
