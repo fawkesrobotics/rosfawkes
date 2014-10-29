@@ -766,6 +766,7 @@ prim_fluent(obj_exists(N)).
 prim_fluent(obj_is_box(N)).
 prim_fluent(obj_inspected(N)).
 prim_fluent(obj_is_wanted(N)).
+prim_fluent(obj_delivered(N)).
 %prim_fluent(object_visible(N)).
 %prim_fluent(object_types(N,T)).
 
@@ -774,6 +775,7 @@ prim_fluent(obj_is_wanted(N)).
 senses(read_skiller_status, skiller_status).
 senses(update, skiller_status).
 senses(drive_to(N), at).
+senses(pickup_object(N), holding).
 %senses(grab_box, holding_box).
 
 %% causal laws
@@ -796,6 +798,7 @@ causes_val(drive_to(N), ignore_status, false, true).
 causes_val(deliver_object(N, Where), obj_is_wanted(N), false, true).
 causes_val(deliver_object(N, Where), obj_is_box(N), false, true).
 causes_val(deliver_object(N, Where), obj_inspected(N), false, true).
+causes_val(deliver_object(N, Where), obj_delivered(N), true, true).
 causes_val(inspect_object(N), obj_inspected(N), true, true).
 
 causes_val(object_seen(N),   obj_exists(N), true, true).
@@ -803,7 +806,6 @@ causes_val(object_is_box(N), obj_is_box(N), true, true).
 causes_val(object_is_wanted(N), obj_is_wanted(N), true, true).
 
 causes_val(putdown_object(N, Where), holding, false, true).
-causes_val(pickup_object(N), holding, N, true).
 
 
 %% preconditions
@@ -849,6 +851,7 @@ initially(obj_exists(N), false) :- object(N).
 initially(obj_is_box(N), false) :- object(N).
 initially(obj_inspected(N), false) :- object(N).
 initially(obj_is_wanted(N), false) :- object(N).
+initially(obj_is_delivered(N), false) :- object(N).
 
 %% definition of complex conditions
 proc(inactive, skiller_status = "S_INACTIVE").
@@ -896,6 +899,9 @@ proc(control, prioritized_interrupts(
 	% change_fluent(exec_once,false)]),
 
      interrupt(and(neg(verbose_mode(mute)), num_runs=2), set_verbose(mute)),
+
+     interrupt(n, obj_delivered(n),
+	       [print("Object delivered, I'm done."), sleep(5.0)]),
 
      %% Resetting of places after a run
      interrupt(n, next_action_reset_place(n),
