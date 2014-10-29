@@ -36,6 +36,18 @@ skiller:
         obj_pose_6: Position3DInterface::/percobj/6
         obj_pose_7: Position3DInterface::/percobj/7
         obj_pose_8: Position3DInterface::/percobj/8
+        obj_pose_9: Position3DInterface::/percobj/9
+        obj_pose_10: Position3DInterface::/percobj/10
+        obj_pose_11: Position3DInterface::/percobj/11
+        obj_pose_12: Position3DInterface::/percobj/12
+        obj_pose_13: Position3DInterface::/percobj/13
+        obj_pose_14: Position3DInterface::/percobj/14
+        obj_pose_15: Position3DInterface::/percobj/15
+        obj_pose_16: Position3DInterface::/percobj/16
+        obj_pose_17: Position3DInterface::/percobj/17
+        obj_pose_18: Position3DInterface::/percobj/18
+        obj_pose_19: Position3DInterface::/percobj/19
+        obj_pose_20: Position3DInterface::/percobj/20
         obj_type_1: MultiTypedObjectInterface::/percobj/1
         obj_type_2: MultiTypedObjectInterface::/percobj/2
         obj_type_3: MultiTypedObjectInterface::/percobj/3
@@ -44,5 +56,17 @@ skiller:
         obj_type_6: MultiTypedObjectInterface::/percobj/6
         obj_type_7: MultiTypedObjectInterface::/percobj/7
         obj_type_8: MultiTypedObjectInterface::/percobj/8
+        obj_type_9: MultiTypedObjectInterface::/percobj/9
+        obj_type_10: MultiTypedObjectInterface::/percobj/10
+        obj_type_11: MultiTypedObjectInterface::/percobj/11
+        obj_type_12: MultiTypedObjectInterface::/percobj/12
+        obj_type_13: MultiTypedObjectInterface::/percobj/13
+        obj_type_14: MultiTypedObjectInterface::/percobj/14
+        obj_type_15: MultiTypedObjectInterface::/percobj/15
+        obj_type_16: MultiTypedObjectInterface::/percobj/16
+        obj_type_17: MultiTypedObjectInterface::/percobj/17
+        obj_type_18: MultiTypedObjectInterface::/percobj/18
+        obj_type_19: MultiTypedObjectInterface::/percobj/19
+        obj_type_20: MultiTypedObjectInterface::/percobj/20
         obj_type_logo: MultiTypedObjectInterface::/percobj/logo
 

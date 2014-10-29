@@ -25,24 +25,15 @@ module(..., skillenv.module_init)
 name               = "perceive_objects"
 fsm                = SkillHSM:new{name=name, start="UPDATE_OBJECTS", debug=true}
 depends_skills     = {}
-depends_interfaces = {
-   {v = "obj_type_1", type = "MultiTypedObjectInterface"},
-   {v = "obj_type_2", type = "MultiTypedObjectInterface"},
-   {v = "obj_type_3", type = "MultiTypedObjectInterface"},
-   {v = "obj_type_4", type = "MultiTypedObjectInterface"},
-   {v = "obj_type_5", type = "MultiTypedObjectInterface"},
-   {v = "obj_type_6", type = "MultiTypedObjectInterface"},
-   {v = "obj_type_7", type = "MultiTypedObjectInterface"},
-   {v = "obj_type_8", type = "MultiTypedObjectInterface"},
-   {v = "obj_pose_1", type = "Position3DInterface"},
-   {v = "obj_pose_2", type = "Position3DInterface"},
-   {v = "obj_pose_3", type = "Position3DInterface"},
-   {v = "obj_pose_4", type = "Position3DInterface"},
-   {v = "obj_pose_5", type = "Position3DInterface"},
-   {v = "obj_pose_6", type = "Position3DInterface"},
-   {v = "obj_pose_7", type = "Position3DInterface"},
-   {v = "obj_pose_8", type = "Position3DInterface"}
-}
+
+depends_interfaces = {}
+
+local MAX_NUM_OBJECTS = 20
+for i = 1, MAX_NUM_OBJECTS do
+   table.insert(depends_interfaces, {v = "obj_type_"..i, type = "MultiTypedObjectInterface"})
+   table.insert(depends_interfaces, {v = "obj_pose_"..i, type = "Position3DInterface"})
+end
+
 depends_actions  = {
    {v = "update_objects", name="do_object_tracking", type="hybris_c1_msgs/DoObjectTracking"}
 }
@@ -57,10 +48,12 @@ documentation      = [==[Call perception ROS action and post result to blackboar
 skillenv.skill_module(...)
 
 -- Constants
-local type_ifs = { obj_type_1, obj_type_2, obj_type_3, obj_type_4,
-		   obj_type_5, obj_type_6, obj_type_7, obj_type_8 }
-local pose_ifs = { obj_pose_1, obj_pose_2, obj_pose_3, obj_pose_4,
-		   obj_pose_5, obj_pose_6, obj_pose_7, obj_pose_8 }
+local type_ifs = {}
+local pose_ifs = {}
+for i = 1, MAX_NUM_OBJECTS do
+    type_ifs[i] = _M["obj_type_"..i]
+    pose_ifs[i] = _M["obj_pose_"..i]
+end
 
 -- Jump conditions
 
@@ -89,7 +82,7 @@ function PUBLISH:init()
    local m = self.fsm.vars.message
 
    if #m.values.objects > #type_ifs then
-      print_warn("More than five objects received, will only add five")
+      print_warn("More than %d objects received", #type_ifs)
    end
 
    local num_obj = math.min(#m.values.objects, #type_ifs)
