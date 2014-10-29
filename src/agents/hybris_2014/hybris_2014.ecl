@@ -937,9 +937,12 @@ proc(control, prioritized_interrupts(
 	       [print_var("Placing back unwanted object %d", n),
 		putdown_object(n, "table1")]),
 
+     % The if is required here, even (or because) holding is in poss(inspect_object(N)).
+     % Otherwise, if pickup failed, and consequently holding=none poss would fail, which
+     % somehow leaves the interrupt stale and would never revisit.
      interrupt(n, next_action_inspect(n),
 	       [print_var("Picking up and inspecting %d", n),
-		pickup_object(n), inspect_object(n)]),
+		pickup_object(n), if(holding\=none, inspect_object(n), [])]),
 
      %interrupt(next_action_goto_counter,
 	%       [print("Moving to start position"),
