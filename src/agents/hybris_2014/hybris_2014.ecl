@@ -764,7 +764,8 @@ prim_fluent(place_explored(P)).
 prim_fluent(reset_places).
 prim_fluent(obj_exists(N)).
 prim_fluent(obj_is_box(N)).
-prim_fluent(obj_inspected(N)).
+prim_fluent(obj_inspected(N, Where)).
+prim_fluent(obj_pickedup(N)).
 prim_fluent(obj_is_wanted(N)).
 prim_fluent(obj_delivered(N)).
 %prim_fluent(object_visible(N)).
@@ -797,9 +798,9 @@ causes_val(drive_to(N), ignore_status, false, true).
 %causes_val(grab_box, ignore_status, false, true).
 causes_val(deliver_object(N, Where), obj_is_wanted(N), false, true).
 causes_val(deliver_object(N, Where), obj_is_box(N), false, true).
-causes_val(deliver_object(N, Where), obj_inspected(N), false, true).
+causes_val(deliver_object(N, Where), obj_inspected(N, AnyWhere), false, true) :- place(AnyWhere).
 causes_val(deliver_object(N, Where), obj_delivered(N), true, true).
-causes_val(inspect_object(N), obj_inspected(N), true, true).
+%causes_val(inspect_object(N, Where), obj_inspected(N, Where), true, true).
 
 causes_val(object_seen(N),   obj_exists(N), true, true).
 causes_val(object_is_box(N), obj_is_box(N), true, true).
@@ -849,9 +850,10 @@ initially(place_explored(N), false) :- place(N).
 initially(reset_places, false).
 initially(obj_exists(N), false) :- object(N).
 initially(obj_is_box(N), false) :- object(N).
-initially(obj_inspected(N), false) :- object(N).
+initially(obj_inspected(N, Where), false) :- object(N), place(Where).
 initially(obj_is_wanted(N), false) :- object(N).
 initially(obj_is_delivered(N), false) :- object(N).
+initially(obj_pickedup(N), false) :- object(N).
 
 %% definition of complex conditions
 proc(inactive, skiller_status = "S_INACTIVE").
@@ -865,16 +867,18 @@ proc(not_at_place(N), and(neg(at=N), place(N))).
 
 proc(next_action_goto_counter, and(at_place("start"), and(executable, holding=none))).
 
-proc(next_action_explore(N), and(at_place(N), neg(place_explored(N)))).
+proc(next_action_explore(N), and(holding=none, and(at_place(N), neg(place_explored(N))))).
 
-proc(next_action_move_on(N), and(place(N), neg(place_visited(N)))).
+proc(next_action_move_on(N), and(holding=none, and(place(N), neg(place_visited(N))))).
 
 proc(next_action_reset_place(N), and(reset_places=true, and(place(N), and(place_visited(N)=true, place_explored(N)=true)))).
 
 proc(next_action_deliver(N), and(object(N), and(obj_is_wanted(N), holding=N))).
-proc(next_action_putback(N), and(object(N), and(neg(obj_is_wanted(N)), and(obj_inspected(N), holding=N)))).
+proc(next_action_putback(N), and(object(N), and(holding=N, and(neg(obj_is_wanted(N)), obj_pickedup(N))))).
 
-proc(next_action_inspect(N), and(object(N), and(obj_is_box(N), neg(obj_inspected(N))))).
+proc(next_action_inspect(N),
+     and(holding=none, and(object(N), and(obj_is_box(N), and(at_place(Where),
+     and(neg(obj_inspected(N, Where)), neg(obj_pickedup(N)))))))).
 
 proc(should_exit, terminate(1)).
 
@@ -942,7 +946,9 @@ proc(control, prioritized_interrupts(
      % somehow leaves the interrupt stale and would never revisit.
      interrupt(n, next_action_inspect(n),
 	       [print_var("Picking up and inspecting %d", n),
-		pickup_object(n), if(holding\=none, inspect_object(n), [])]),
+		pi(w, [?(at_place(w)), change_fluent(obj_inspected(n, w), true)]),
+		pickup_object(n),
+		if(holding\=none, [inspect_object(n), change_fluent(obj_pickedup(n), true)], [])]),
 
      %interrupt(next_action_goto_counter,
 	%       [print("Moving to start position"),
