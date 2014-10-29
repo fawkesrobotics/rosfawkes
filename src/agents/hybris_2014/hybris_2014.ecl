@@ -575,7 +575,7 @@ execute(pickup_object(N), Sr) :-
   exec_skill_wait("planexec", Arg),
   ( success, !, Sr=N, log_info("Picking up %d succeeded", [N])
     ;
-    failed, !, Sr=false, log_warn("Picking up %d failed", [N])
+    failed, !, Sr=none, log_warn("Picking up %d failed", [N])
   ).
 
 :- if(getval(use_esl, true)).
@@ -805,7 +805,7 @@ causes_val(object_seen(N),   obj_exists(N), true, true).
 causes_val(object_is_box(N), obj_is_box(N), true, true).
 causes_val(object_is_wanted(N), obj_is_wanted(N), true, true).
 
-causes_val(putdown_object(N, Where), holding, false, true).
+causes_val(putdown_object(N, Where), holding, none, true).
 
 
 %% preconditions
@@ -825,7 +825,7 @@ poss(set_verbose(Mode), true).
 poss(perceive_objects, true).
 poss(deliver_object(N, Where), and(object(N), obj_is_wanted(N))).
 poss(inspect_object(N), and(holding=N, and(object(N), obj_is_box(N)))).
-poss(pickup_object(N), and(holding=false, and(object(N), obj_is_box(N)))).
+poss(pickup_object(N), and(holding=none, and(object(N), obj_is_box(N)))).
 poss(putdown_object(N, Where), and(holding=N, and(object(N), obj_is_box(N)))).
 
 poss(reset_scene, true).
@@ -835,7 +835,7 @@ poss(restart, true).
 
 %% initial state
 initially(at, "start").
-initially(holding, false).
+initially(holding, none).
 initially(ignore_status, false).
 initially(intro, false).
 initially(num_runs, 1).
@@ -863,7 +863,7 @@ proc(executable, or(inactive, or(final, ignore_status=true)) ).
 proc(at_place(N), and(at=N, place(N))).
 proc(not_at_place(N), and(neg(at=N), place(N))).
 
-proc(next_action_goto_counter, and(at_place("start"), and(executable, holding=false))).
+proc(next_action_goto_counter, and(at_place("start"), and(executable, holding=none))).
 
 proc(next_action_explore(N), and(at_place(N), neg(place_explored(N)))).
 
