@@ -585,6 +585,15 @@ execute(pickup_object(N), Sr) :-
     failed, !, Sr=none, log_warn("Picking up %d failed", [N])
   ).
 
+execute(arms_drive_pose, false) :-
+  log_info("Moving arms to drive pose"),
+  send_agent_info("Retracting arms after failed manipulation"),
+  exec_skill_wait("planexec", "goal=\"(arms-drive-pose)\""),
+  ( success, !, log_info("Moving arms to side succeeded")
+    ;
+    failed, !, log_warn("Moving arms to side failed")
+  ).
+
 :- if(getval(use_esl, true)).
 
 execute(inspect_object(N), Sr) :-
@@ -634,14 +643,14 @@ execute(inspect_object(N), Sr) :-
 
 :- endif.
 
-execute(putdown_object(N, Where), false) :-
+execute(putdown_object(N, Surface, Where), false) :-
   object_to_planner(N, NP),
-  log_info("Placing object %d (planner %d) at %s", [N, NP, Where]),
-  concat_string(["goal=\"(and (on obj_", NP, " ", Where, ") (searched ", Where, "))\", use_env_server=true"], Arg),
+  log_info("Placing object %d (planner %d) on %s at %s", [N, NP, Surface, Where]),
+  concat_string(["goal=\"(and (on obj_", NP, " ", Surface, ") (searched ", Where, "))\""], Arg),
   exec_skill_wait("planexec", Arg),
-  ( success, !, log_info("Putting down %d at %s succeeded", [N, Where])
+  ( success, !, log_info("Putting down %d on %s at %s succeeded", [N, Surface, Where])
     ;
-    failed, !, log_warn("Putting down %d at %s failed", [N, Where])
+    failed, !, log_warn("Putting down %d on %s at %s failed", [N, Surface, Where])
   ).
 
 execute(sleep, false) :- log_debug("Executing: sleep"), sleep(0.5).
@@ -786,7 +795,8 @@ prim_action(reset_scene).
 prim_action(deliver_object(N, Where)) :- object(N).
 prim_action(inspect_object(N)) :- object(N).
 prim_action(pickup_object(N)) :- object(N).
-prim_action(putdown_object(N, Where)) :- object(N).
+prim_action(putdown_object(N, Surface, Where)) :- object(N), place(Where).
+prim_action(arms_drive_pose).
 
 
 %% fluents
@@ -862,7 +872,7 @@ causes_val(object_is_box(N), obj_is_box(N), true, true).
 causes_val(object_is_wanted(N), obj_is_wanted(N), true, true).
 :- endif.
 
-causes_val(putdown_object(N, Where), holding, none, true).
+causes_val(putdown_object(N, Surface, Where), holding, none, true).
 
 
 %% preconditions
@@ -883,7 +893,8 @@ poss(perceive_objects, true).
 poss(deliver_object(N, Where), and(object(N), obj_is_wanted(N))).
 poss(inspect_object(N), and(holding=N, and(object(N), obj_is_box(N)))).
 poss(pickup_object(N), and(holding=none, and(object(N), obj_is_box(N)))).
-poss(putdown_object(N, Where), and(holding=N, and(object(N), obj_is_box(N)))).
+poss(putdown_object(N, Surface, Where), and(holding=N, and(object(N), obj_is_box(N)))).
+poss(arms_drive_pose, true).
 
 poss(reset_scene, true).
 
@@ -1012,7 +1023,7 @@ proc(control, prioritized_interrupts(
 
      interrupt(n, next_action_putback(n),
 	       [print_var("Placing back unwanted object %d", n),
-		putdown_object(n, "table1")]),
+		pi(w, [?(at_place(w)), putdown_object(n, "table1", w)])]),
 
      % The if is required here, even (or because) holding is in poss(inspect_object(N)).
      % Otherwise, if pickup failed, and consequently holding=none poss would fail, which
@@ -1021,7 +1032,7 @@ proc(control, prioritized_interrupts(
 	       [print_var("Picking up and inspecting %d", n),
 		pi(w, [?(at_place(w)), change_fluent(obj_inspected(n, w), true)]),
 		pickup_object(n),
-		if(holding\=none, [inspect_object(n), change_fluent(obj_pickedup(n), true)], [])]),
+		if(holding\=none, [inspect_object(n), change_fluent(obj_pickedup(n), true)], [arms_drive_pose])]),
 
      %interrupt(next_action_goto_counter,
 	%       [print("Moving to start position"),
