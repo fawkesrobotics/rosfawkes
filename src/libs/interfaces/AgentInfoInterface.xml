@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE interface SYSTEM "interface.dtd">
+<interface name="AgentInfoInterface" author="Tim Niemueller" year="2014">
+  <data>
+    <comment>
+      Informational messages that the agent may send for visualization.
+    </comment>
+    <field type="string" length="256" name="message">Info message.</field>
+  </data>
+</interface>
