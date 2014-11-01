@@ -195,6 +195,7 @@ init :-
     bb_ensure_connected,!,
     bb_open_interface_reading("SkillerInterface","Skiller"),
     bb_open_interface_reading("Position3DInterface", "Pose"),
+    bb_open_interface_writing("AgentInfoInterface", "Agent"),
     open_object_interfaces,
     bb_read_interfaces,
     % acquire control to skiller
@@ -211,6 +212,7 @@ fin :-
     bb_send_message("SkillerInterface::Skiller", "ReleaseControlMessage", []) ; true,
     bb_close_interface("SkillerInterface::Skiller"),
     bb_close_interface("Position3DInterface::Pose"),
+    bb_close_interface("AgentInfoInterface::Agent"),
     close_object_interfaces,
     log_info("finalized hybris2014").
 
@@ -328,6 +330,16 @@ update_objects_data :-
      ).
 
 :- endif.
+
+send_agent_info(Msg) :-
+  bb_set("AgentInfoInterface::Agent", "message", Msg),
+  bb_write_interface("AgentInfoInterface::Agent").
+
+send_agent_info(MsgFormat, Vars) :-
+  sprintf(MsgString, MsgFormat, Vars),
+  log_info("Sending agent info: %s", [MsgString]),
+  bb_set("AgentInfoInterface::Agent", "message", MsgString),
+  bb_write_interface("AgentInfoInterface::Agent").
 
 interface_object_visible(N) :-
   concat_string(["Position3DInterface::/percobj/", N], Interface),
@@ -494,6 +506,7 @@ execute(read_skiller_status, Sr) :-
 
 execute(drive_to(Node), Sr) :- 
     log_info("Executing: drive_to(%w)", [Node]),
+    send_agent_info("Driving to %s", [Node]),
     %  use_env_server=true"
     concat_string(["goal=\"(at-base ", Node, ")\""], Arg),
     log_warn("Drive to %s", [Node]),
@@ -532,6 +545,7 @@ execute(perceive_objects, false) :-
 
 execute(perceive_objects, false) :- 
     log_info("Executing: perceive_objects"),
+    send_agent_info("Perceiving objects"),
     exec_skill_wait("perceive_objects", ""),
     log_info("perceive_objects finished executing"),
     % fake a wanted object
@@ -561,6 +575,7 @@ execute(perceive_objects, false) :-
 execute(deliver_object(N, Where), false) :-
   object_to_planner(N, NP),
   log_info("Delivering object %d (planner: %d) to %s", [N, NP, Where]),
+  send_agent_info("Delivering object %d to %s", [NP, Where]),
   concat_string(["goal=\"(and (on obj_", NP, " ", Where, ") (arms-drive-pose))\""], Arg),
   exec_skill_wait("planexec", Arg),
   retract(object_visible(N, _)), assert(object_visible(N, false)),
@@ -578,6 +593,7 @@ execute(deliver_object(N, Where), false) :-
 execute(pickup_object(N), Sr) :-
   object_to_planner(N, NP),
   log_info("Picking up object %d (planner: %d)", [N, NP]),
+  send_agent_info("Picking up object %d", [NP]),
   concat_string(["goal=\"(and (object-inspectable obj_", NP, ") (grasped obj_", NP, " right_arm))\""], Arg),
   exec_skill_wait("planexec", Arg),
   ( success, !, Sr=N, log_info("Picking up %d succeeded", [N])
@@ -597,7 +613,9 @@ execute(arms_drive_pose, false) :-
 :- if(getval(use_esl, true)).
 
 execute(inspect_object(N), Sr) :-
-  log_info("Inspecting object %d", [N]),
+  object_to_planner(N, NP),
+  log_info("Inspecting object %d (planner %d)", [N, NP]),
+  send_agent_info("Inspecting object %d", [NP]),
   exec_skill_wait("inspect_logo", ""),
   object_to_stdname(N, N_StdName),
   %retract(object_inspected(N, _)), assert(object_inspected(N, true)),
@@ -621,7 +639,9 @@ execute(inspect_object(N), Sr) :-
 :- else.
 
 execute(inspect_object(N), Sr) :-
+  object_to_planner(N, NP),
   log_info("Inspecting object %d", [N]),
+  send_agent_info("Inspecting object %d", [NP]),
   exec_skill_wait("inspect_logo", ""),
   retract(object_inspected(N, _)), assert(object_inspected(N, true)),
   retract(object_inspected_processed(N, _)), assert(object_inspected_processed(N, false)),
@@ -646,6 +666,7 @@ execute(inspect_object(N), Sr) :-
 execute(putdown_object(N, Surface, Where), false) :-
   object_to_planner(N, NP),
   log_info("Placing object %d (planner %d) on %s at %s", [N, NP, Surface, Where]),
+  send_agent_info("Placing object %d on %s at %s", [NP, Surface, Where]),
   concat_string(["goal=\"(and (on obj_", NP, " ", Surface, ") (searched ", Where, "))\""], Arg),
   exec_skill_wait("planexec", Arg),
   ( success, !, log_info("Putting down %d on %s at %s succeeded", [N, Surface, Where])
@@ -714,6 +735,8 @@ execute(reset_scene, false) :-
      )),
   log_info("Calling reset_perception skill"),
   exec_skill_wait("reset_perception", ""),
+  send_agent_info("--reset--"),
+  sleep(0.1),
   log_info("Will reset fluents on reset completion"),
   log_info("*** RESET COMPLETED ***").
 
@@ -752,12 +775,16 @@ exog_occurs(object_seen(N)) :-
 exog_occurs(object_is_box(N)) :-
   object(N), object_types_processed(N, false), object_types(N, T), object_type_is_box(T),
   retract(object_types_processed(N, false)), assert(object_types_processed(N, true)),
+  object_to_planner(N, NP),
+  send_agent_info("Object %d is a box, need to investigate", [NP]),
   log_error("EXOG: object_is_box (%d)", [N]).
 
 exog_occurs(object_is_wanted(N)) :-
   object(N), object_inspected_processed(N, false), object_inspected(N, true), object_types(N, T),
   want_object(O), object_type_is_wanted(T, O),
   retract(object_inspected_processed(N, false)), assert(object_inspected_processed(N, true)),
+  object_to_planner(N, NP),
+  send_agent_info("Box %d is of the desired flavor", [NP]),
   log_error("EXOG: object_is_wanted(%d)", [N]).
 
 :- endif.
