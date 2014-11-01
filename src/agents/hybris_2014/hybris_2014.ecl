@@ -392,6 +392,11 @@ object(N) :- max_num_objects(M), !, between(1, M, N).
 
 object_to_planner(N, M) :- M is N - 1.
 
+perception_to_object("chocolateFront.jpg", "chocolate").
+perception_to_object("chocolateBack.jpg", "chocolate").
+perception_to_object("biscuitsFront.jpg", "biscuits").
+perception_to_object("biscuitsBack.jpg", "biscuits").
+
 %% auxiliary predicates to handle skiller status
 is_running("S_RUNNING").
 not_running("S_FINAL").
@@ -617,10 +622,11 @@ execute(inspect_object(N), Sr) :-
     bb_read_interface("MultiTypedObjectInterface::/percobj/logo"),
     bb_get("MultiTypedObjectInterface::/percobj/logo", "type_1", LogoType),
     %LogoType="chocolate",
-    log_info("Read logo type %s", [LogoType]),
-    join_string([LogoType|T], " ", SM), log_info("Types now: %s", [SM]),
-    retract(object_types(N, _)), assert(object_types(N, [LogoType|T])),
-    Sr=LogoType
+    perception_to_object(LogoType, LT),
+    log_info("Read logo type %s", [LT]),
+    join_string([LT|T], " ", SM), log_info("Types now: %s", [SM]),
+    retract(object_types(N, _)), assert(object_types(N, [LT|T])),
+    Sr=LT
     ;
     failed, !, Sr=""
   ).
