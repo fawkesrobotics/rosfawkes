@@ -23,7 +23,7 @@ module(..., skillenv.module_init)
 
 -- Crucial skill information
 name               = "perceive_objects"
-fsm                = SkillHSM:new{name=name, start="UPDATE_OBJECTS", debug=true}
+fsm                = SkillHSM:new{name=name, start="WAIT_A_LITTLE", debug=true}
 depends_skills     = {}
 
 depends_interfaces = {}
@@ -63,12 +63,14 @@ fsm:define_states{
    export_to=_M,
    closure={objects=objects},
 
+   {"WAIT_A_LITTLE", JumpState},
    {"UPDATE_OBJECTS", ActionJumpState, action_client=update_objects, exit_to="PUBLISH", fail_to="FAILED"},
    {"PUBLISH", JumpState}
 }
 
 -- Transitions
 fsm:add_transitions{
+   {"WAIT_A_LITTLE", "UPDATE_OBJECTS", timeout=3.0},
    {"PUBLISH", "FINAL", cond=true}
 }
 
