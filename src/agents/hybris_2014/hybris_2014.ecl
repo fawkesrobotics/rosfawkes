@@ -494,7 +494,8 @@ execute(read_skiller_status, Sr) :-
 
 execute(drive_to(Node), Sr) :- 
     log_info("Executing: drive_to(%w)", [Node]),
-    concat_string(["goal=\"(at-base ", Node, ")\", use_env_server=true"], Arg),
+    %  use_env_server=true"
+    concat_string(["goal=\"(at-base ", Node, ")\""], Arg),
     log_warn("Drive to %s", [Node]),
     exec_skill_wait("planexec", Arg),
     log_error("DRIVE completed"),
@@ -560,7 +561,7 @@ execute(perceive_objects, false) :-
 execute(deliver_object(N, Where), false) :-
   object_to_planner(N, NP),
   log_info("Delivering object %d (planner: %d) to %s", [N, NP, Where]),
-  concat_string(["goal=\"(on obj_", NP, " ", Where, ")\", use_env_server=true"], Arg),
+  concat_string(["goal=\"(and (on obj_", NP, " ", Where, ") (arms-drive-pose))\""], Arg),
   exec_skill_wait("planexec", Arg),
   retract(object_visible(N, _)), assert(object_visible(N, false)),
   retract(object_visible_processed(N, _)), assert(object_visible_processed(N, false)),
@@ -577,7 +578,7 @@ execute(deliver_object(N, Where), false) :-
 execute(pickup_object(N), Sr) :-
   object_to_planner(N, NP),
   log_info("Picking up object %d (planner: %d)", [N, NP]),
-  concat_string(["goal=\"(object-inspectable obj_", NP, ")\", use_env_server=true"], Arg),
+  concat_string(["goal=\"(and (object-inspectable obj_", NP, ") (grasped obj_", NP, " right_arm))\""], Arg),
   exec_skill_wait("planexec", Arg),
   ( success, !, Sr=N, log_info("Picking up %d succeeded", [N])
     ;
