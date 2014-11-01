@@ -501,25 +501,26 @@ execute(drive_to(Node), Sr) :-
 
 :- if(getval(use_esl, true)).
 
-%% execute(perceive_objects, false) :- 
-%%     log_info("Executing: perceive_objects"),
-%%     exec_skill_wait("perceive_objects", ""),
-%%     % fake a wanted object
-%%     (object_visible(1, false)
-%%      -> log_warn("Setting object to visible"),
-%% 	%retract(object_visible(1, _)), assert(object_visible(1, true)),
-%% 	esl_assert(object_visible(o1)),
-%% 	%%retract(object_inspected(1, _)), assert(object_inspected(1, true)),
-%% 	%retract(object_types(1, _)), assert(object_types(1, ["box"]))
-%%         %esl_assert(exists(t, box_type(t) ^ object_type(o1, t)))
-%%         esl_assert(object_type(o1, biscuit) v object_type(o1, chocolate) v object_type(o1, dummy))
-%%      ;
-%%      log_info("Object already visible")
-%%     ),
-%%     ( success, !, Sr=true, log_info("Perceiving objects succeeded")%, update_objects_data
-%%       ;
-%%       failed, !, Sr=false, log_info("Perceiving objects failed")
-%%     ).
+execute(perceive_objects, false) :- 
+    log_info("Executing: perceive_objects"),
+    send_agent_info("Perceiving objects"),
+    exec_skill_wait("perceive_objects", ""),
+    % fake a wanted object
+    %% (object_visible(1, false)
+    %%  -> log_warn("Setting object to visible"),
+    %% 	%retract(object_visible(1, _)), assert(object_visible(1, true)),
+    %% 	esl_assert(object_visible(o1)),
+    %% 	%%retract(object_inspected(1, _)), assert(object_inspected(1, true)),
+    %% 	%retract(object_types(1, _)), assert(object_types(1, ["box"]))
+    %%     %esl_assert(exists(t, box_type(t) ^ object_type(o1, t)))
+    %%     esl_assert(object_type(o1, biscuit) v object_type(o1, chocolate) v object_type(o1, dummy))
+    %%  ;
+    %%  log_info("Object already visible")
+    %% ),
+    ( success, !, Sr=true, log_info("Perceiving objects succeeded"), update_objects_data
+      ;
+      failed, !, Sr=false, log_info("Perceiving objects failed")
+    ).
 
 :- else.
 
@@ -663,6 +664,27 @@ execute(send_switch_msg(Iface, Msg), false) :-
 :- endif.
 
 
+:- if(getval(use_esl, true)).
+
+execute(reset_scene, false) :-
+  % reset all current knowledge about objects
+  \+ (object(N),
+      \+ (log_info("Resetting object %d", N),
+	  retract(object_visible(N, _)), assert(object_visible(N, false)),
+	  retract(object_visible_processed(N, _)), assert(object_visible_processed(N, false)),
+	  retract(object_inspected(N, _)), assert(object_inspected(N, false)),
+	  retract(object_inspected_processed(N, _)), assert(object_inspected_processed(N, false)),
+	  retract(object_types(N, _)), assert(object_types(N, [])),
+	  retract(object_types_processed(N, _)), assert(object_types_processed(N, false)),
+          esl_reset
+     )),
+  log_info("Calling reset_perception skill"),
+  exec_skill_wait("reset_perception", ""),
+  log_info("Will reset fluents on reset completion"),
+  log_info("*** RESET COMPLETED ***").
+
+:- else.
+
 execute(reset_scene, false) :-
   % reset all current knowledge about objects
   \+ (object(N),
@@ -678,6 +700,8 @@ execute(reset_scene, false) :-
   exec_skill_wait("reset_perception", ""),
   log_info("Will reset fluents on reset completion"),
   log_info("*** RESET COMPLETED ***").
+
+:- endif.
 
 
 execute(set_verbose(Mode), false) :-
@@ -702,6 +726,8 @@ execute(A,_) :- (\+ senses(A, _), term_string(A, S),
 %% exogenous actions
 exog_occurs(req_update) :- update(Date), retract(update(Date)).
 
+:- if(not(getval(use_esl, true))).
+
 exog_occurs(object_seen(N)) :-
   object(N), object_visible_processed(N, false), object_visible(N, true),
   retract(object_visible_processed(N, false)), assert(object_visible_processed(N, true)),
@@ -718,14 +744,20 @@ exog_occurs(object_is_wanted(N)) :-
   retract(object_inspected_processed(N, false)), assert(object_inspected_processed(N, true)),
   log_error("EXOG: object_is_wanted(%d)", [N]).
 
+:- endif.
+
 exog_occurs(_) :- fail.
 
 exog_action(req_update).
 
 
+:- if(not(getval(use_esl, true))).
+
 exog_action(object_seen(N)).
 exog_action(object_is_box(N)).
 exog_action(object_is_wanted(N)).
+
+:- endif.
 
 
 %% primitive actions
@@ -763,11 +795,13 @@ prim_fluent(exec_once).
 prim_fluent(place_visited(P)).
 prim_fluent(place_explored(P)).
 prim_fluent(reset_places).
-prim_fluent(obj_exists(N)).
-prim_fluent(obj_is_box(N)).
 prim_fluent(obj_inspected(N, Where)).
 prim_fluent(obj_pickedup(N)).
+:- if(not(getval(use_esl, true))).
+prim_fluent(obj_exists(N)).
+prim_fluent(obj_is_box(N)).
 prim_fluent(obj_is_wanted(N)).
+:- endif.
 prim_fluent(obj_delivered(N)).
 %prim_fluent(object_visible(N)).
 %prim_fluent(object_types(N,T)).
@@ -805,15 +839,21 @@ causes_val(reset_scene, place_explored(N), false, true) :- place(N).
 causes_val(restart, ignore_status, true, true).
 causes_val(drive_to(N), ignore_status, false, true).
 %causes_val(grab_box, ignore_status, false, true).
+%
+
+:- if(not(getval(use_esl, true))).
 causes_val(deliver_object(N, Where), obj_is_wanted(N), false, true).
 causes_val(deliver_object(N, Where), obj_is_box(N), false, true).
+:- endif.
 causes_val(deliver_object(N, Where), obj_inspected(N, AnyWhere), false, true) :- place(AnyWhere).
 causes_val(deliver_object(N, Where), obj_delivered(N), true, true).
 %causes_val(inspect_object(N, Where), obj_inspected(N, Where), true, true).
 
+:- if(not(getval(use_esl, true))).
 causes_val(object_seen(N),   obj_exists(N), true, true).
 causes_val(object_is_box(N), obj_is_box(N), true, true).
 causes_val(object_is_wanted(N), obj_is_wanted(N), true, true).
+:- endif.
 
 causes_val(putdown_object(N, Where), holding, none, true).
 
@@ -857,12 +897,30 @@ initially(skiller_status, "S_INACTIVE").
 initially(place_visited(N), false) :- place(N).
 initially(place_explored(N), false) :- place(N).
 initially(reset_places, false).
+:- if(not(getval(use_esl, true))).
 initially(obj_exists(N), false) :- object(N).
 initially(obj_is_box(N), false) :- object(N).
-initially(obj_inspected(N, Where), false) :- object(N), place(Where).
 initially(obj_is_wanted(N), false) :- object(N).
+:- endif.
+initially(obj_inspected(N, Where), false) :- object(N), place(Where).
 initially(obj_is_delivered(N), false) :- object(N).
 initially(obj_pickedup(N), false) :- object(N).
+
+:- if(getval(use_esl, true)).
+
+obj_exists(N) :-
+   object_to_stdname(N, N_StdName),
+   esl_holds(1, object_visible(N_StdName)).
+obj_is_box(N) :-
+   object_to_stdname(N, N_StdName),
+   esl_holds(1, object_type(N_StdName, biscuit) v object_type(N_StdName, chocolate) v object_type(N_StdName, dummy)).
+obj_is_wanted(N) :-
+   object_to_stdname(N, N_StdName),
+   want_object(O),
+   boxtype_to_stdname(O, O_StdName),
+   esl_holds(1, object_type(N_StdName, O_StdName)).
+
+:- endif.
 
 %% definition of complex conditions
 proc(inactive, skiller_status = "S_INACTIVE").
